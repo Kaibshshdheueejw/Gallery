@@ -83,13 +83,9 @@ jobs:
           flutter test > test.log 2>&1
           code=$?
           if [ $code -ne 0 ]; then
-            tail -c 6000 test.log | sed 's/%/%25/g; s/\r/%0D/g; s/\n/%0A/g' > /dev/null || true
-            # Emit the failing section as a single annotation (message limit ~64KB).
-            {
-              echo "::error title=flutter-test-failures::"
-              tail -n 120 test.log | tr '\n' '\036' | sed 's/\x1E/%0A/g'
-              echo ""
-            }
+            # Single-line annotation: % escaped first, then newlines → %0A.
+            MSG=$(tail -n 90 test.log | tr -d '\r' | sed 's/%/%25/g' | tr '\n' '\036' | sed 's/\x1E/%0A/g')
+            echo "::error title=flutter-test-failures::$MSG"
           fi
           tail -n 40 test.log
           exit $code

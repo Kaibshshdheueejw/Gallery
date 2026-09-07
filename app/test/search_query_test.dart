@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:gallery_app/domain/models/media_item.dart';
 import 'package:gallery_app/features/search/search_screen.dart';
 
@@ -19,6 +20,8 @@ MediaItem item(String id, String title, DateTime at,
     );
 
 void main() {
+  setUpAll(() async => initializeDateFormatting());
+
   group('SearchQuery.parse', () {
     test('ISO month: 2026-07', () {
       final q = SearchQuery.parse('2026-07', 'en', SearchTypeFilter.all);

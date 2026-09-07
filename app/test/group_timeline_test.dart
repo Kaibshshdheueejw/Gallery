@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:intl/intl.dart';
 import 'package:gallery_app/domain/models/media_item.dart';
 import 'package:gallery_app/domain/usecases/group_timeline.dart';
 
@@ -16,6 +18,7 @@ MediaItem item(String id, DateTime at) => MediaItem(
     );
 
 void main() {
+  setUpAll(() async => initializeDateFormatting());
   final now = DateTime(2026, 9, 7, 12);
 
   group('GroupTimeline', () {
@@ -32,7 +35,11 @@ void main() {
       expect(sections[0].items.length, 2); // Sep 7 first (newest)
       expect(sections[0].header, GroupTimeline.todayToken);
       expect(sections[1].header, GroupTimeline.yesterdayToken); // Sep 6
-      expect(sections[2].header, contains('Sep')); // full date for Sep 5
+      // Sep 5 is 2 days before "now" → weekday-name header (<7 days).
+      expect(
+        sections[2].header,
+        DateFormat.EEEE('en').format(DateTime(2026, 9, 5)),
+      );
     });
 
     test('groups by month and year', () {

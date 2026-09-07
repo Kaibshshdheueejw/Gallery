@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/settings/app_settings.dart';
@@ -12,6 +13,8 @@ import 'l10n/app_localizations.dart';
 /// and the app runs fully edge-to-edge behind the floating glass capsule.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Locale-aware date symbols for timeline headers / search date parsing (§7).
+  await initializeDateFormatting();
 
   final container = ProviderContainer();
   // Kick off hydration; await so the first frame already knows user prefs.
