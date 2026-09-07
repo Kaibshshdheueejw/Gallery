@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/haptics.dart';
 import '../../core/theme/glass_theme.dart';
 import '../../core/widgets/floating_nav_bar.dart';
+import '../../core/widgets/glass_surface.dart';
 import '../../core/widgets/pressable.dart';
 import '../../l10n/app_localizations.dart';
 import '../albums/albums_screen.dart';

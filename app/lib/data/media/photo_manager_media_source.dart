@@ -36,33 +36,17 @@ class PhotoManagerMediaSource implements MediaSource {
 
   @override
   Future<MediaPermission> requestPermission() async =>
-      _map(_extract(await PhotoManager.requestPermissionExtend()));
+      _map(await PhotoManager.requestPermissionExtend());
 
   @override
-  Future<MediaPermission> checkPermission() async {
-    // ⚠ Version seam (§11): some photo_manager releases require a
-    // `requestOption` argument here. Dynamic dispatch keeps this file
-    // compiling across those shapes; CI reports the resolved signature and
-    // the seam is then finalized to the exact typed call.
-    final dynamic pm = PhotoManager;
-    try {
-      return _map(_extract(await pm.getPermissionState()));
-    } catch (_) {
-      return MediaPermission.unknown;
-    }
-  }
-
-  /// ⚠ Version seam (§11): photo_manager's permission API has churned across
-  /// majors (PermissionState vs PermissionExtend{authorizationState}). This
-  /// extractor accepts either shape so upgrades touch only this file.
-  PermissionState _extract(dynamic value) {
-    if (value is PermissionState) return value;
-    try {
-      final state = value.authorizationState;
-      if (state is PermissionState) return state;
-    } catch (_) {}
-    return PermissionState.denied;
-  }
+  Future<MediaPermission> checkPermission() async => _map(
+        // ⚠ Version seam (§11): photo_manager 3.12 requires a
+        // PermissionRequestOption here; earlier 3.x releases had different
+        // shapes. This file is the single place to update on major bumps.
+        await PhotoManager.getPermissionState(
+          requestOption: const PermissionRequestOption(),
+        ),
+      );
 
   MediaPermission _map(PermissionState state) => switch (state) {
         PermissionState.authorized => MediaPermission.full,
@@ -132,17 +116,22 @@ class PhotoManagerMediaSource implements MediaSource {
   }
 
   Future<MediaItem> _mapAsset(AssetEntity a) async {
-    final relativePath = a.relativePath ?? '';
+    // ⚠ Version seam (§11): title/relativePath nullability has shifted
+    // between photo_manager releases; read them through dynamic so the
+    // mapping compiles against either shape.
+    final dynamic e = a;
+    final String relativePath = (e.relativePath as String?) ?? '';
+    final String title = (await e.titleAsync as String?) ?? a.id;
     return MediaItem(
       id: a.id,
       kind: a.type == AssetType.video ? MediaKind.video : MediaKind.photo,
-      title: (await a.titleAsync) ?? a.id,
+      title: title,
       createdAt: a.createDateTime,
       modifiedAt: a.modifiedDateTime,
       width: a.width,
       height: a.height,
       sizeBytes: await _sizeOf(a),
-      albumId: a.relativePath ?? 'all',
+      albumId: relativePath.isEmpty ? 'all' : relativePath,
       albumName: _folderName(relativePath),
       duration: Duration(seconds: a.duration),
       relativePath: relativePath,

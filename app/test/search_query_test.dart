@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gallery_app/data/media/media_source.dart';
 import 'package:gallery_app/domain/models/media_item.dart';
 import 'package:gallery_app/features/search/search_screen.dart';
 
