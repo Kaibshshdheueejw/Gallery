@@ -139,6 +139,22 @@ flutter run
 
 ---
 
+## 🌐 Web test build
+
+A browser-runnable prototype of this spec lives in [`web/`](web/) — it implements the gallery
+UX (timeline, smart search, albums, viewer, editor, locked folder, recycle bin, Material You
+theming, storage insights) with real on-browser pixel pipelines for duplicate/blur/scene
+detection, so the product flows can be tested without a device or emulator.
+
+```bash
+cd web && npm install && npm run dev   # then open the workspace preview
+```
+
+See [`web/README.md`](web/README.md) for the feature map (real vs simulated) and a 60-second
+testing tour.
+
+---
+
 ## 🗺️ Roadmap
 
 - [ ] Face grouping v1 (on-device)

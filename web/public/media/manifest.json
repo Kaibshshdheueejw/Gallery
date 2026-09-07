@@ -1,0 +1,422 @@
+[
+  {
+    "id": "beach-1",
+    "file": "media/beach-1.jpg",
+    "w": 500,
+    "h": 625,
+    "bytes": 43753
+  },
+  {
+    "id": "beach-2",
+    "file": "media/beach-2.jpg",
+    "w": 800,
+    "h": 553,
+    "bytes": 92585
+  },
+  {
+    "id": "beach-3",
+    "file": "media/beach-3.jpg",
+    "w": 800,
+    "h": 534,
+    "bytes": 63715
+  },
+  {
+    "id": "beach-4",
+    "file": "media/beach-4.jpg",
+    "w": 800,
+    "h": 449,
+    "bytes": 36214
+  },
+  {
+    "id": "beach-5",
+    "file": "media/beach-5.jpg",
+    "w": 800,
+    "h": 534,
+    "bytes": 57862
+  },
+  {
+    "id": "blur-1",
+    "file": "media/blur-1.jpg",
+    "w": 800,
+    "h": 534,
+    "bytes": 20146
+  },
+  {
+    "id": "blur-2",
+    "file": "media/blur-2.jpg",
+    "w": 525,
+    "h": 350,
+    "bytes": 11317
+  },
+  {
+    "id": "blur-3",
+    "file": "media/blur-3.jpg",
+    "w": 612,
+    "h": 408,
+    "bytes": 21914
+  },
+  {
+    "id": "city-1",
+    "file": "media/city-1.jpg",
+    "w": 338,
+    "h": 225,
+    "bytes": 24148
+  },
+  {
+    "id": "city-2",
+    "file": "media/city-2.jpg",
+    "w": 338,
+    "h": 211,
+    "bytes": 10223
+  },
+  {
+    "id": "city-3",
+    "file": "media/city-3.jpg",
+    "w": 338,
+    "h": 225,
+    "bytes": 37548
+  },
+  {
+    "id": "city-4",
+    "file": "media/city-4.jpg",
+    "w": 525,
+    "h": 350,
+    "bytes": 32979
+  },
+  {
+    "id": "city-5",
+    "file": "media/city-5.jpg",
+    "w": 600,
+    "h": 1000,
+    "bytes": 113477
+  },
+  {
+    "id": "doc-1",
+    "file": "media/doc-1.jpg",
+    "w": 612,
+    "h": 229,
+    "bytes": 10980
+  },
+  {
+    "id": "doc-2",
+    "file": "media/doc-2.jpg",
+    "w": 673,
+    "h": 350,
+    "bytes": 14403
+  },
+  {
+    "id": "doc-3",
+    "file": "media/doc-3.jpg",
+    "w": 612,
+    "h": 334,
+    "bytes": 33089
+  },
+  {
+    "id": "doc-4",
+    "file": "media/doc-4.jpg",
+    "w": 612,
+    "h": 326,
+    "bytes": 18890
+  },
+  {
+    "id": "doc-5",
+    "file": "media/doc-5.jpg",
+    "w": 612,
+    "h": 612,
+    "bytes": 28309
+  },
+  {
+    "id": "dup-1",
+    "file": "media/dup-1.jpg",
+    "w": 800,
+    "h": 553,
+    "bytes": 93481
+  },
+  {
+    "id": "dup-2",
+    "file": "media/dup-2.jpg",
+    "w": 577,
+    "h": 322,
+    "bytes": 41134
+  },
+  {
+    "id": "dup-3",
+    "file": "media/dup-3.jpg",
+    "w": 642,
+    "h": 350,
+    "bytes": 44792
+  },
+  {
+    "id": "festival-1",
+    "file": "media/festival-1.jpg",
+    "w": 612,
+    "h": 408,
+    "bytes": 65550
+  },
+  {
+    "id": "festival-2",
+    "file": "media/festival-2.jpg",
+    "w": 525,
+    "h": 350,
+    "bytes": 25881
+  },
+  {
+    "id": "festival-3",
+    "file": "media/festival-3.jpg",
+    "w": 450,
+    "h": 258,
+    "bytes": 21029
+  },
+  {
+    "id": "festival-4",
+    "file": "media/festival-4.jpg",
+    "w": 627,
+    "h": 350,
+    "bytes": 46403
+  },
+  {
+    "id": "festival-5",
+    "file": "media/festival-5.jpg",
+    "w": 612,
+    "h": 414,
+    "bytes": 30562
+  },
+  {
+    "id": "flowers-1",
+    "file": "media/flowers-1.jpg",
+    "w": 1000,
+    "h": 646,
+    "bytes": 71615
+  },
+  {
+    "id": "flowers-2",
+    "file": "media/flowers-2.jpg",
+    "w": 338,
+    "h": 190,
+    "bytes": 13282
+  },
+  {
+    "id": "flowers-3",
+    "file": "media/flowers-3.jpg",
+    "w": 700,
+    "h": 350,
+    "bytes": 26962
+  },
+  {
+    "id": "flowers-4",
+    "file": "media/flowers-4.jpg",
+    "w": 525,
+    "h": 350,
+    "bytes": 17758
+  },
+  {
+    "id": "flowers-5",
+    "file": "media/flowers-5.jpg",
+    "w": 338,
+    "h": 237,
+    "bytes": 21899
+  },
+  {
+    "id": "food-1",
+    "file": "media/food-1.jpg",
+    "w": 500,
+    "h": 308,
+    "bytes": 24201
+  },
+  {
+    "id": "food-2",
+    "file": "media/food-2.jpg",
+    "w": 500,
+    "h": 500,
+    "bytes": 29079
+  },
+  {
+    "id": "food-3",
+    "file": "media/food-3.jpg",
+    "w": 625,
+    "h": 350,
+    "bytes": 45812
+  },
+  {
+    "id": "food-4",
+    "file": "media/food-4.jpg",
+    "w": 626,
+    "h": 626,
+    "bytes": 100524
+  },
+  {
+    "id": "food-5",
+    "file": "media/food-5.jpg",
+    "w": 282,
+    "h": 188,
+    "bytes": 12242
+  },
+  {
+    "id": "forest-1",
+    "file": "media/forest-1.jpg",
+    "w": 622,
+    "h": 350,
+    "bytes": 49634
+  },
+  {
+    "id": "forest-2",
+    "file": "media/forest-2.jpg",
+    "w": 563,
+    "h": 1000,
+    "bytes": 138663
+  },
+  {
+    "id": "forest-3",
+    "file": "media/forest-3.jpg",
+    "w": 642,
+    "h": 350,
+    "bytes": 44878
+  },
+  {
+    "id": "forest-4",
+    "file": "media/forest-4.jpg",
+    "w": 625,
+    "h": 350,
+    "bytes": 48031
+  },
+  {
+    "id": "forest-5",
+    "file": "media/forest-5.jpg",
+    "w": 500,
+    "h": 667,
+    "bytes": 64612
+  },
+  {
+    "id": "friends-1",
+    "file": "media/friends-1.jpg",
+    "w": 612,
+    "h": 408,
+    "bytes": 69454
+  },
+  {
+    "id": "friends-2",
+    "file": "media/friends-2.jpg",
+    "w": 612,
+    "h": 408,
+    "bytes": 62519
+  },
+  {
+    "id": "friends-3",
+    "file": "media/friends-3.jpg",
+    "w": 612,
+    "h": 408,
+    "bytes": 56514
+  },
+  {
+    "id": "friends-4",
+    "file": "media/friends-4.jpg",
+    "w": 613,
+    "h": 350,
+    "bytes": 36833
+  },
+  {
+    "id": "friends-5",
+    "file": "media/friends-5.jpg",
+    "w": 612,
+    "h": 408,
+    "bytes": 48429
+  },
+  {
+    "id": "mountain-1",
+    "file": "media/mountain-1.jpg",
+    "w": 500,
+    "h": 667,
+    "bytes": 79401
+  },
+  {
+    "id": "mountain-2",
+    "file": "media/mountain-2.jpg",
+    "w": 1000,
+    "h": 563,
+    "bytes": 90387
+  },
+  {
+    "id": "mountain-3",
+    "file": "media/mountain-3.jpg",
+    "w": 642,
+    "h": 350,
+    "bytes": 26156
+  },
+  {
+    "id": "mountain-4",
+    "file": "media/mountain-4.jpg",
+    "w": 500,
+    "h": 750,
+    "bytes": 68668
+  },
+  {
+    "id": "mountain-5",
+    "file": "media/mountain-5.jpg",
+    "w": 565,
+    "h": 1000,
+    "bytes": 46006
+  },
+  {
+    "id": "person-1",
+    "file": "media/person-1.jpg",
+    "w": 612,
+    "h": 408,
+    "bytes": 34491
+  },
+  {
+    "id": "person-2",
+    "file": "media/person-2.jpg",
+    "w": 612,
+    "h": 408,
+    "bytes": 27866
+  },
+  {
+    "id": "person-3",
+    "file": "media/person-3.jpg",
+    "w": 1000,
+    "h": 667,
+    "bytes": 29759
+  },
+  {
+    "id": "person-4",
+    "file": "media/person-4.jpg",
+    "w": 612,
+    "h": 408,
+    "bytes": 25975
+  },
+  {
+    "id": "pets-1",
+    "file": "media/pets-1.jpg",
+    "w": 453,
+    "h": 350,
+    "bytes": 15149
+  },
+  {
+    "id": "pets-2",
+    "file": "media/pets-2.jpg",
+    "w": 530,
+    "h": 350,
+    "bytes": 24140
+  },
+  {
+    "id": "pets-3",
+    "file": "media/pets-3.jpg",
+    "w": 612,
+    "h": 408,
+    "bytes": 26874
+  },
+  {
+    "id": "pets-4",
+    "file": "media/pets-4.jpg",
+    "w": 625,
+    "h": 350,
+    "bytes": 27433
+  },
+  {
+    "id": "pets-5",
+    "file": "media/pets-5.jpg",
+    "w": 625,
+    "h": 350,
+    "bytes": 16763
+  }
+]
