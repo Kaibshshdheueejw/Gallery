@@ -3,11 +3,14 @@ import 'package:gallery_app/data/media/thumb_cache.dart';
 
 import 'helpers/fake_media_source.dart';
 
+// NOTE: these run as testWidgets (not plain test()) on purpose — under the
+// flutter_test runner, bare async test bodies awaiting library futures can
+// stall outside the binding's async zone. testWidgets gives every await a
+// deterministic fake-async flush. No widgets are pumped; this is pure logic.
 void main() {
-  // Pure Dart unit tests — no widget binding needed (the disk tier is
-  // disabled, so path_provider channels are never touched).
   group('ThumbCache (memory tier)', () {
-    test('second get for the same key hits memory, not the source', () async {
+    testWidgets('second get for the same key hits memory, not the source',
+        (tester) async {
       final source = FakeMediaSource();
       final cache = ThumbCache(source, enableDisk: false);
       final first = await cache.get('a1');
@@ -17,7 +20,8 @@ void main() {
       expect(source.thumbnailCalls, 1);
     });
 
-    test('LRU evicts oldest entries past the byte budget', () async {
+    testWidgets('LRU evicts oldest entries past the byte budget',
+        (tester) async {
       final source = FakeMediaSource();
       // Fake thumbs are 68-byte PNGs; budget fits exactly two entries.
       final cache = ThumbCache(source, maxMemoryBytes: 150, enableDisk: false);
@@ -29,7 +33,7 @@ void main() {
       expect(source.thumbnailCalls, 4);
     });
 
-    test('concurrent gets share one in-flight request', () async {
+    testWidgets('concurrent gets share one in-flight request', (tester) async {
       final source = FakeMediaSource();
       final cache = ThumbCache(source, enableDisk: false);
       final results = await Future.wait([
@@ -41,7 +45,7 @@ void main() {
       expect(source.thumbnailCalls, 1);
     });
 
-    test('clear empties the memory tier', () async {
+    testWidgets('clear empties the memory tier', (tester) async {
       final cache = ThumbCache(FakeMediaSource(), enableDisk: false);
       await cache.get('a1');
       cache.clear();
