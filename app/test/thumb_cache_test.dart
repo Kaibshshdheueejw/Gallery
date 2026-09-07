@@ -1,3 +1,6 @@
+@Timeout(Duration(seconds: 45))
+library;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gallery_app/data/media/thumb_cache.dart';
 
@@ -13,8 +16,11 @@ void main() {
         (tester) async {
       final source = FakeMediaSource();
       final cache = ThumbCache(source, enableDisk: false);
+      debugPrint('t1: before first get');
       final first = await cache.get('a1');
+      debugPrint('t1: after first get');
       final second = await cache.get('a1');
+      debugPrint('t1: after second get');
       expect(first, isNotNull);
       expect(second, same(first));
       expect(source.thumbnailCalls, 1);

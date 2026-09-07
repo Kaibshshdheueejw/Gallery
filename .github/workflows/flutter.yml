@@ -80,7 +80,9 @@ jobs:
       - name: Unit + widget tests
         run: |
           set +e
-          flutter test > test.log 2>&1
+          # Expanded reporter + serial files so a stall names its test; the
+          # shell `timeout` caps the whole step regardless of framework bugs.
+          timeout 600 flutter test --reporter=expanded --concurrency=1 > test.log 2>&1
           code=$?
           if [ $code -ne 0 ]; then
             # Single-line annotation: % escaped first, then newlines → %0A.

@@ -33,7 +33,7 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle(const Duration(seconds: 2));
+    await tester.pumpAndSettle(const Duration(milliseconds: 100), EnginePhase.sendSemanticsUpdate, const Duration(seconds: 20));
 
     // Floating capsule nav labels (en locale in tests).
     expect(find.text('For you'), findsOneWidget);
@@ -43,9 +43,9 @@ void main() {
 
     // Switch to Albums and back — IndexedStack keeps everything alive.
     await tester.tap(find.text('Albums'));
-    await tester.pumpAndSettle(const Duration(seconds: 1));
+    await tester.pumpAndSettle(const Duration(milliseconds: 100), EnginePhase.sendSemanticsUpdate, const Duration(seconds: 20));
     await tester.tap(find.text('Timeline'));
-    await tester.pumpAndSettle(const Duration(seconds: 1));
+    await tester.pumpAndSettle(const Duration(milliseconds: 100), EnginePhase.sendSemanticsUpdate, const Duration(seconds: 20));
     expect(tester.takeException(), isNull);
   });
 }
