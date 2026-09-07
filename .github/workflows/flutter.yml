@@ -102,6 +102,10 @@ jobs:
           flutter build apk --release > build.log 2>&1
           code=$?
           if [ $code -ne 0 ]; then
+            # Emit Gradle's actual "What went wrong" block as one annotation
+            # (grep alone missed it last time and caught only warnings).
+            MSG=$(awk '/\* What went wrong:/{f=1} f' build.log | head -n 80 | tr -d '\r' | sed 's/%/%25/g' | tr '\n' '\036' | sed 's/\x1E/%0A/g')
+            echo "::error title=apk-build-what-went-wrong::$MSG"
             grep -E "error|Error|FAILURE|Exception|e: " build.log | head -n 60 | while read -r l; do
               echo "::error title=apk-build::$l"
             done
