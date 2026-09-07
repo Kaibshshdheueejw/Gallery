@@ -19,13 +19,13 @@ void main() {
 
     test('LRU evicts oldest entries past the byte budget', () async {
       final source = FakeMediaSource();
-      // Fake thumbs are `width` bytes long; width=100 → 100 bytes per entry.
-      final cache = ThumbCache(source, maxMemoryBytes: 250);
-      await cache.get('a1', width: 100);
-      await cache.get('a2', width: 100);
-      await cache.get('a3', width: 100); // evicts a1
+      // Fake thumbs are 68-byte PNGs; budget fits exactly two entries.
+      final cache = ThumbCache(source, maxMemoryBytes: 150);
+      await cache.get('a1');
+      await cache.get('a2');
+      await cache.get('a3'); // 3×68 > 150 → evicts a1
       expect(cache.memoryEntriesForTest, 2);
-      await cache.get('a1', width: 100); // re-fetched from source
+      await cache.get('a1'); // re-fetched from source
       expect(source.thumbnailCalls, 4);
     });
 

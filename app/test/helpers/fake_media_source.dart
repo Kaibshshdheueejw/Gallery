@@ -2,6 +2,8 @@ import 'dart:typed_data';
 
 import 'package:gallery_app/data/media/media_source.dart';
 import 'package:gallery_app/domain/models/media_item.dart';
+import 'package:gallery_app/features/shared/asset_thumb.dart'
+    show kTransparentImage;
 
 /// Deterministic in-memory media source for unit/widget tests (§9):
 /// screens and repositories are exercised without a device or plugin.
@@ -85,7 +87,7 @@ class FakeMediaSource implements MediaSource {
           name: entry.value.first.albumName,
           itemCount: entry.value.length,
           isSmart: false,
-          coverThumbFactory: () async => Uint8List.fromList(List.filled(64, 7)),
+          coverThumbFactory: () async => kTransparentImage,
         ),
     ];
   }
@@ -100,12 +102,13 @@ class FakeMediaSource implements MediaSource {
   @override
   Future<Uint8List?> thumbnail(String itemId, {int width = 360, int height = 360}) async {
     thumbnailCalls++;
-    return Uint8List.fromList(List.filled(width, itemId.hashCode & 0xFF));
+    // A real (1×1 transparent) PNG so widget tests can decode it.
+    return kTransparentImage;
   }
 
   @override
   Future<Uint8List?> fullBytes(String itemId) async {
     fullBytesCalls++;
-    return Uint8List.fromList(List.filled(1024, 11));
+    return kTransparentImage;
   }
 }

@@ -84,7 +84,7 @@ jobs:
           code=$?
           if [ $code -ne 0 ]; then
             # Single-line annotation: % escaped first, then newlines → %0A.
-            MSG=$(tail -n 90 test.log | tr -d '\r' | sed 's/%/%25/g' | tr '\n' '\036' | sed 's/\x1E/%0A/g')
+            MSG=$(tail -n 300 test.log | tr -d '\r' | sed 's/%/%25/g' | tr '\n' '\036' | sed 's/\x1E/%0A/g')
             echo "::error title=flutter-test-failures::$MSG"
           fi
           tail -n 40 test.log
