@@ -53,14 +53,14 @@ class SearchQuery {
       final year = int.parse(iso.group(1)!);
       final month = iso.group(2) == null ? null : int.parse(iso.group(2)!);
       if (month != null && month >= 1 && month <= 12) {
+        // Query fully consumed as a date → no residual text criterion.
         return SearchQuery(
-          text: text,
           month: DateTime(year, month),
           year: year,
           type: type,
         );
       }
-      return SearchQuery(text: text, year: year, type: type);
+      return SearchQuery(year: year, type: type);
     }
 
     // "July 2026" in the active locale (DateFormat understands its own output).
@@ -68,8 +68,8 @@ class SearchQuery {
       try {
         final fmt = DateFormat(pattern, locale);
         final parsed = fmt.parseStrict(text, false);
+        // Fully consumed as a locale month-name date.
         return SearchQuery(
-          text: text,
           month: DateTime(parsed.year, parsed.month),
           year: parsed.year,
           type: type,

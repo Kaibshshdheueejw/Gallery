@@ -19,11 +19,18 @@ import 'media_source.dart';
 /// already-decoded tiers instead of re-requesting every cell.
 /// ─────────────────────────────────────────────────────────────────────────
 class ThumbCache {
-  ThumbCache(this._source, {int maxMemoryBytes = AppConstants.thumbCacheMaxBytes})
-      : _maxMemoryBytes = maxMemoryBytes;
+  ThumbCache(
+    this._source, {
+    int maxMemoryBytes = AppConstants.thumbCacheMaxBytes,
+    this.enableDisk = true,
+  }) : _maxMemoryBytes = maxMemoryBytes;
 
   final MediaSource _source;
   final int _maxMemoryBytes;
+
+  /// Disk tier switch. Production keeps it on; unit tests disable it so the
+  /// memory-tier semantics are testable without path_provider channels.
+  final bool enableDisk;
 
   final LinkedHashMap<String, _Entry> _memory = LinkedHashMap();
   int _memoryBytes = 0;
@@ -60,21 +67,23 @@ class ThumbCache {
 
   Future<Uint8List?> _load(String key, String itemId, int width, int height) async {
     // Disk tier.
-    try {
-      final file = File('${(await _disk()).path}/$key.thumb');
-      if (file.existsSync()) {
-        final bytes = file.readAsBytesSync();
-        _promote(key, bytes);
-        _touchDisk(file);
-        return bytes;
+    if (enableDisk) {
+      try {
+        final file = File('${(await _disk()).path}/$key.thumb');
+        if (file.existsSync()) {
+          final bytes = file.readAsBytesSync();
+          _promote(key, bytes);
+          _touchDisk(file);
+          return bytes;
+        }
+      } catch (_) {
+        // Disk cache is best-effort; fall through to source.
       }
-    } catch (_) {
-      // Disk cache is best-effort; fall through to source.
     }
     final bytes = await _source.thumbnail(itemId, width: width, height: height);
     if (bytes != null) {
       _promote(key, bytes);
-      unawaited(_writeDisk(key, bytes));
+      if (enableDisk) unawaited(_writeDisk(key, bytes));
     }
     return bytes;
   }
@@ -123,6 +132,7 @@ class ThumbCache {
   void clear() {
     _memory.clear();
     _memoryBytes = 0;
+    if (!enableDisk) return;
     try {
       final dir = _diskRoot;
       if (dir != null && dir.existsSync()) {

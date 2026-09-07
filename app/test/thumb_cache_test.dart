@@ -9,7 +9,7 @@ void main() {
   group('ThumbCache (memory tier)', () {
     test('second get for the same key hits memory, not the source', () async {
       final source = FakeMediaSource();
-      final cache = ThumbCache(source);
+      final cache = ThumbCache(source, enableDisk: false);
       final first = await cache.get('a1');
       final second = await cache.get('a1');
       expect(first, isNotNull);
@@ -20,7 +20,7 @@ void main() {
     test('LRU evicts oldest entries past the byte budget', () async {
       final source = FakeMediaSource();
       // Fake thumbs are 68-byte PNGs; budget fits exactly two entries.
-      final cache = ThumbCache(source, maxMemoryBytes: 150);
+      final cache = ThumbCache(source, maxMemoryBytes: 150, enableDisk: false);
       await cache.get('a1');
       await cache.get('a2');
       await cache.get('a3'); // 3×68 > 150 → evicts a1
@@ -31,7 +31,7 @@ void main() {
 
     test('concurrent gets share one in-flight request', () async {
       final source = FakeMediaSource();
-      final cache = ThumbCache(source);
+      final cache = ThumbCache(source, enableDisk: false);
       final results = await Future.wait([
         cache.get('a5'),
         cache.get('a5'),
@@ -42,7 +42,7 @@ void main() {
     });
 
     test('clear empties the memory tier', () async {
-      final cache = ThumbCache(FakeMediaSource());
+      final cache = ThumbCache(FakeMediaSource(), enableDisk: false);
       await cache.get('a1');
       cache.clear();
       expect(cache.memoryEntriesForTest, 0);
