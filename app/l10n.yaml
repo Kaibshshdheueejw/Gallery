@@ -1,0 +1,7 @@
+# Official ARB-based localization (gen-l10n). Every user-facing string in the
+# app is routed through AppLocalizations — no hardcoded UI strings (§7, §11).
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+nullable-getter: false

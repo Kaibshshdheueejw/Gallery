@@ -1,0 +1,4 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Profile builds run integration tests against a real device. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+</manifest>

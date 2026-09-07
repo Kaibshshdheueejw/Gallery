@@ -1,0 +1,165 @@
+# Gallery — Design Decisions
+
+Living document required by the build prompt (§10). Every trade-off, reduced
+scope, and version-sensitive choice is recorded here honestly.
+
+## 0. Build environment & verification strategy
+
+**Constraint:** the development sandbox for this repository has no Flutter
+SDK and no network access to `storage.googleapis.com` / `pub.dev`, so the app
+cannot be compiled locally here.
+
+**Decision:** GitHub Actions is the compiler of record. `.github/workflows/
+flutter.yml` runs `flutter pub get` → `flutter gen-l10n` → `flutter analyze`
+→ `flutter test` → `flutter build apk --release` on every push, and uploads
+the APK as an artifact. A stage is "done" only when its CI run is green.
+This is the exact iterative loop the prompt requires ("confirm each stage is
+working before moving to the next"), with CI substituting for a local SDK.
+
+**iOS:** building an iOS archive requires macOS. The workflow contains the
+`build-ios` job (currently commented) which activates in Stage 1 when the
+`ios/` platform folder lands, on a `macos-latest` runner
+(`--no-codesign`: App Store signing needs the developer's certificates and
+cannot live in this repository — the Fastlane stub documents where they go).
+
+## 1. Staged build plan (per prompt §12 "build this iteratively")
+
+| Stage | Scope | Status |
+|---|---|---|
+| 0 | Architecture scaffold, navigation shell, Liquid Glass system, timeline grid + sticky headers + pinch density + scrubber, viewer (swipe/zoom/dynamic tint), albums (smart + device), search (text/date/type + recents), For You (real memories engine), settings, permissions, Android target, CI | **in progress** |
+| 1 | iOS target (pbxproj, Info.plist, launch screen, icon set), hardened release config, integration test (import → edit → export) | planned |
+| 2 | Metadata DB (Drift), favorites/custom albums/drag-drop, multi-select batch actions, trash + auto-purge, locked folder (biometric + PIN), hero transitions, full video playback | planned |
+| 3 | On-device AI: ML Kit faces + OCR, scene tagging, NL smart search, duplicates/blur/quality clean-up, storage insights | planned |
+| 4 | Photo editor suite (crop/straighten/adjust/filters/auto-enhance/markup/magic eraser/portrait blur, non-destructive + history) | planned |
+| 5 | Video editor suite (trim/split/speed/audio/color/cover/text/export presets on background isolates) | planned |
+| 6 | Sharing/export (compression presets, EXIF-preserving batch), pluggable encrypted backup (`BackupProvider`), opt-in sync | planned |
+| 7 | Full i18n: remaining 15+ locales, RTL mirroring pass, font fallback audit, locale-aware formatting sweep | planned |
+| 8 | Polish pass: 60/120 fps profiling, cold-start budget, Play/App Store assets | planned |
+
+Reduced-scope items inside shipped stages are marked ⚠ below and in code
+comments — nothing ships as a fake stub.
+
+## 2. State management: Riverpod
+
+Chosen over Bloc per the prompt's default. Riverpod's `Notifier` +
+`FutureProvider` map cleanly onto the async media-store access pattern, its
+override mechanism makes every screen testable with `FakeMediaSource`, and it
+avoids the event/state boilerplate that would double the size of the media
+pipeline. Used consistently — no `setState`-outside-widget state, no Bloc
+anywhere.
+
+## 3. Local database: Drift (Stage 2)
+
+The prompt allows Isar **or** Drift. Isar's maintenance stalled in 2024–2025
+(the original repo stopped releasing; only community forks continue). Drift
+(SQLite) is actively maintained, null-safe end-to-end, and its codegen output
+is deterministic — important because codegen must run in CI (see §0).
+Stage 0 uses SharedPreferences for preferences only (settings, recent
+searches) — no structured data exists yet, so no DB dependency ships dead.
+
+## 4. Blur performance strategy (§1 of the prompt)
+
+- Live `BackdropFilter` is restricted to **small, mostly-static surfaces**:
+  the nav capsule, sticky date pills, sheets, dialogs, viewer bars. Grid
+  cells NEVER blur — they are squircle-clipped images.
+- Every glass surface is wrapped in a `RepaintBoundary` so scrolling content
+  behind it doesn't re-raster the blur every frame; Flutter's engine caches
+  the backdrop layer while the filter and surface are unchanged.
+- **Reduced Transparency / Performance Mode**: `off / on / auto`. Auto uses
+  `FrameTierMonitor` — samples `SchedulerBinding` frame timings during the
+  first seconds of heavy UI; if p90 total frame time > 20 ms the device is
+  flagged low-tier and blur is swapped for solid tints globally. No platform
+  API, no device whitelists, reversible the moment frames recover on
+  app restart.
+- Specular highlights shift with the accelerometer at ~20 Hz (throttled,
+  clamped), toggleable in Settings for battery.
+- ⚠ Trade-off: real "blur a background snapshot" (render-scene-to-image then
+  blur once) costs a `toImage` raster pass per capture and only pays off for
+  full-screen dialogs; Flutter's cached BackdropFilter already gives the same
+  steady-state cost for our small surfaces. If profiling (Stage 8) shows
+  mid-range devices struggling on sheets over video, we will snapshot-blur
+  the sheet backdrop specifically.
+
+## 5. Squircle corners
+
+`SquircleBorder`/`SquircleClip` draw a superellipse (n=5) path instead of
+circular-arc rounded rects, matching the continuous curvature of iOS/
+Liquid-Glass surfaces. Cost: one path build per layout, trivial vs. blur.
+
+## 6. Media access: photo_manager (§9)
+
+- Android: scoped storage only — `READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO`,
+  `READ_MEDIA_VISUAL_USER_SELECTED` (Android 14 partial), legacy
+  `READ_EXTERNAL_STORAGE` capped at `maxSdkVersion=32`.
+  **No `MANAGE_EXTERNAL_STORAGE`** anywhere.
+- iOS: `NSPhotoLibraryUsageDescription` + limited-access support (Stage 1
+  manifest).
+- ⚠ Version note (§11): photo_manager 3.x's `PermissionExtend` /
+  `RequestOption` surface is the single seam (`photo_manager_media_source
+  .dart`) — a plugin major bump touches only that file. Verified against the
+  plugin's 3.x API; re-verify on every major bump.
+
+## 7. Thumbnail pipeline (§2, §9)
+
+Two-tier custom LRU: memory (48 MB, byte-accounted, in-flight request
+dedup) over disk (`gallery_thumbs/`, count-bounded at 2500 files, LRU by
+mtime). Keys include pixel size, so pinch-density changes reuse tiers.
+Thumbnails are requested at cache size from the media store — full-resolution
+bytes are decoded ONLY in the viewer/editor. Grid virtualization comes free
+from slivers (lazy builder delegates); the page window keeps 10k+ libraries
+from materializing at once.
+
+## 8. Smart-search language architecture (§7 requirement)
+
+`SearchQuery.parse` produces **typed criteria** (text tokens, month, year,
+type filter) rather than doing string matching inline. Adding a language to
+natural-language search = adding token lexicons + date patterns feeding the
+same criteria object; no engine rewrite. Stage 0 supports structured date
+queries in every UI locale (intl DateFormat parsing) and free-text matching;
+NL phrases like "sunset photos from July at the beach" arrive with the AI
+stage (English + Hindi + Bengali lexicons first — stated here per §7's
+requirement to document smart-search language coverage vs UI-only
+translation).
+
+## 9. Localization
+
+- Official `gen-l10n` + ARB files; `nullable-getter: false`; every
+  user-facing string goes through `AppLocalizations` (§7/§11). CI runs
+  `flutter gen-l10n` before analyze so generated classes are never stale in
+  the repo.
+- Launch language plan: Stage 0 ships en/es/hi/bn; Stage 7 adds pt, fr, de,
+  it, ru, ar (+ full RTL pass), ur (+ RTL), tr, ja, ko, zh, zh-TW, vi, th,
+  id. RTL requires mirrored gesture directions — the nav pill, scrubber and
+  swipe-to-dismiss get an explicit RTL audit in Stage 7, not just
+  `Directionality` flips.
+- Domain layer returns **sentinel tokens** for relative day headers
+  ("Today"/"Yesterday") which the presentation layer resolves through
+  AppLocalizations — keeps domain Flutter-free without hardcoding strings.
+
+## 10. App identity
+
+`AppConstants.appName = 'Gallery'` is the only place the name exists in Dart
+(§11). Platform configs (manifest label, bundle display name) reference the
+same string value. The repository also contains `web/` — an earlier
+browser-based test build of the same product spec; it is kept as a manual QA
+reference and is not part of the Flutter deliverable.
+
+## 11. Video processing (forward decision, Stage 5)
+
+⚠ `ffmpeg_kit_flutter` was **retired** by its maintainer in early 2025
+(binaries removed). Stage 5 will use the maintained community continuation
+(`ffmpeg_kit_flutter_new`) or a platform-channel bridge to
+Media3 Transformer (Android) / AVFoundation (iOS) — decision made at Stage 5
+after benchmarking both against the export-preset requirements; all
+processing will run off the UI isolate either way. Flagged now per §11 so no
+one assumes the original plugin is viable.
+
+## 12. Testing (§9)
+
+- Unit: timeline grouping, search query parsing/matching, memory engine,
+  LRU cache semantics (all device-free, running in CI today).
+- Widget: shell smoke test with `FakeMediaSource` + mocked SharedPreferences
+  (runs in CI). Key screens get per-stage widget tests as they land.
+- Integration: `import → edit → export` flow test lands in Stage 1 (needs
+  the iOS/Android device matrix) using `integration_test` on emulators via
+  CI matrix where available.

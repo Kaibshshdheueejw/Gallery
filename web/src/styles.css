@@ -68,6 +68,7 @@ code { background: var(--md-surface-container-highest); padding: 1px 5px; border
 }
 
 /* ── press / spring feedback ──────────────────────────────────────────── */
+.pressable, .pressable-row { cursor: pointer; }
 .press, .pressable, .pressable-row, .cell, .nav-btn { transition: transform var(--dur-tap) var(--spring), box-shadow var(--dur-tap) var(--ease-out), background var(--dur-base) var(--ease-out), opacity var(--dur-base); }
 .press:active, .pressable:active { transform: scale(0.965); }
 .pressable-row:active { transform: scale(0.985); }

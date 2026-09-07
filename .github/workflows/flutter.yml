@@ -1,0 +1,75 @@
+name: Flutter CI
+
+# Builds and verifies the Flutter app in app/ (§9 CI/CD). This is also the
+# compile/test feedback loop used during development in restricted
+# environments — every push must be green before the next stage starts.
+on:
+  push:
+    branches: [main, "arena/**"]
+    paths:
+      - "app/**"
+      - ".github/workflows/flutter.yml"
+  pull_request:
+    paths:
+      - "app/**"
+      - ".github/workflows/flutter.yml"
+
+jobs:
+  analyze-test-build-android:
+    name: Analyze · Test · Build APK (release)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Versions
+        run: |
+          flutter --version
+          java -version
+
+      - name: Dependencies
+        run: flutter pub get
+
+      - name: Generate localizations (gen-l10n)
+        run: flutter gen-l10n
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Unit + widget tests
+        run: flutter test
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gallery-release-apk
+          path: app/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+
+  # iOS archive job (Stage 1): requires a macOS runner. Enable once the
+  # ios/ platform folder lands — kept here so the pipeline shape is final.
+  # build-ios:
+  #   runs-on: macos-latest
+  #   defaults: { run: { working-directory: app } }
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: subosito/flutter-action@v2
+  #       with: { channel: stable, cache: true }
+  #     - run: flutter pub get
+  #     - run: flutter gen-l10n
+  #     - run: flutter build ios --release --no-codesign

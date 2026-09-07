@@ -1,0 +1,106 @@
+{
+  "@@locale": "en",
+  "appName": "Gallery",
+  "@appName": {
+    "description": "Product name. Never translated — it is 'Gallery' in every locale."
+  },
+  "tabForYou": "For you",
+  "tabTimeline": "Timeline",
+  "tabAlbums": "Albums",
+  "tabSearch": "Search",
+  "permissionPhotosTitle": "Gallery needs access to your photos",
+  "permissionPhotosRationale": "Photos and videos are read from this device only to show your timeline, albums and memories. Nothing is uploaded anywhere — all processing happens on-device.",
+  "permissionAllow": "Allow access",
+  "permissionLimited": "Allow access to selected photos",
+  "permissionDenied": "Access denied",
+  "permissionOpenSettings": "Open settings",
+  "permissionDeniedHelp": "Gallery cannot show your library without photo access. You can enable it in system settings.",
+  "loadingLibrary": "Loading your library…",
+  "emptyLibrary": "No photos yet",
+  "emptyLibraryHint": "Take a photo or screenshot and it will appear here.",
+  "photosCount": "{count, plural, =0{No photos} =1{1 photo} other{{count} photos}}",
+  "@photosCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "itemsCount": "{count, plural, =0{No items} =1{1 item} other{{count} items}}",
+  "@itemsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "today": "Today",
+  "yesterday": "Yesterday",
+  "thisMonth": "This month",
+  "thisYear": "This year",
+  "settings": "Settings",
+  "settingsAppearance": "Appearance",
+  "settingsTheme": "Theme",
+  "settingsThemeSystem": "System",
+  "settingsThemeLight": "Light",
+  "settingsThemeDark": "Dark",
+  "settingsPerformanceMode": "Reduced transparency",
+  "settingsPerformanceModeDesc": "Replaces glass blur with solid surfaces. Auto-enabled on devices that struggle to hold 60 fps.",
+  "settingsParallax": "Glass light reflections",
+  "settingsParallaxDesc": "Specular highlights on glass tilt subtly with the device. Turn off to save battery.",
+  "settingsHaptics": "Haptic feedback",
+  "settingsLanguage": "Language",
+  "settingsLanguageSystem": "System default",
+  "settingsGridDensity": "Grid density",
+  "settingsAbout": "About",
+  "settingsVersion": "Version",
+  "settingsPermissions": "Permissions",
+  "settingsPrivacy": "Privacy & data",
+  "settingsPrivacyDesc": "Everything stays on this device unless you enable backup. Face detection, OCR and search run on-device.",
+  "memoryOnThisDay": "On this day",
+  "memoryOnThisDayEmpty": "No memories from previous years yet.",
+  "memoryRecentHighlight": "Recent highlight",
+  "memoryBestDayDesc": "{date} — your busiest day recently",
+  "@memoryBestDayDesc": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "memoriesTitle": "Memories",
+  "openMemory": "Open memory",
+  "albumsSmart": "Smart albums",
+  "albumsDevice": "Device folders",
+  "albumScreenshots": "Screenshots",
+  "albumCamera": "Camera",
+  "albumDownloads": "Downloads",
+  "albumVideos": "Videos",
+  "albumAllPhotos": "All photos",
+  "searchHint": "Search photos, albums and dates",
+  "searchRecent": "Recent searches",
+  "searchClear": "Clear",
+  "searchNoResults": "No results",
+  "searchNoResultsHint": "Try a date, album or file name.",
+  "filterAll": "All",
+  "filterPhotos": "Photos",
+  "filterVideos": "Videos",
+  "actionClose": "Close",
+  "actionCancel": "Cancel",
+  "actionSave": "Save",
+  "actionRetry": "Retry",
+  "scrubberJumpTo": "Jump to {label}",
+  "@scrubberJumpTo": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "errorLibraryLoad": "Could not load the library.",
+  "genericError": "Something went wrong.",
+  "settingsPerfAuto": "Auto",
+  "settingsPerfOff": "Off",
+  "settingsPerfOn": "On",
+  "settingsPerfAutoLowTier": "Auto: low-tier device detected — glass blur is disabled to keep scrolling smooth."
+}

@@ -1,0 +1,47 @@
+name: gallery_app
+description: "Gallery — a private-first, on-device AI photo & video gallery with a Liquid Glass UI. Android + iOS."
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  # Locale-aware date/number formatting (gen-l10n companion).
+  # Pinned to `any` so the Flutter SDK's own intl constraint always wins.
+  intl: any
+
+  # State management — Riverpod, consistently across the whole codebase.
+  flutter_riverpod: ^2.5.1
+
+  # Device media store access (Android scoped storage + iOS photo library).
+  photo_manager: ^3.0.0
+
+  # Lightweight key/value persistence for settings + recent searches.
+  # (Structured metadata — albums, face clusters, edits — moves to Drift in
+  #  Stage 2; see DESIGN_DECISIONS.md.)
+  shared_preferences: ^2.3.0
+
+  # Gyroscope parallax on glass surfaces (togglable for battery).
+  sensors_plus: ^6.0.1
+
+  # File locations for the on-disk thumbnail cache.
+  path_provider: ^2.1.0
+
+  # Pure-Dart image decode used for dominant-colour extraction (Material
+  # You tinting of glass) — no platform channels, safe in isolates.
+  image: ^4.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  generate: true # gen-l10n: see l10n.yaml and lib/l10n/*.arb

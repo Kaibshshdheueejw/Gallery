@@ -16,6 +16,18 @@
 
 ---
 
+## 🏗️ Implementation status
+
+The Flutter app lives in [`app/`](app/) and is built iteratively in stages — see
+[`DESIGN_DECISIONS.md`](DESIGN_DECISIONS.md) for the full stage plan, trade-offs and
+version-risk notes. **Stage 0** (scaffold + Liquid Glass system + timeline grid + viewer +
+albums + search + For You memories + settings + Android target) is in progress; every push is
+verified by GitHub Actions (`flutter analyze` → `flutter test` → `flutter build apk --release`).
+
+- `app/` — production Flutter source (Riverpod, Clean Architecture, gen-l10n)
+- `web/` — browser test build of the same spec (manual QA reference, live in workspace preview)
+- `.github/workflows/flutter.yml` — CI (compiler of record)
+
 ## 🚀 Features
 
 ### Core
@@ -116,24 +128,29 @@ Follows a **Clean Architecture** approach (data / domain / presentation separati
 
 ```bash
 # Clone the repo
-git clone https://github.com/<your-username>/novagallery.git
-cd novagallery
+git clone https://github.com/<your-username>/Gallery.git
+cd Gallery/app
 
 # Install dependencies
 flutter pub get
 
-# Generate code (if using build_runner for models/DB)
-dart run build_runner build --delete-conflicting-outputs
+# Generate localizations (ARB → AppLocalizations)
+flutter gen-l10n
 
-# Run the app
+# Run the app on a device/emulator
 flutter run
+
+# Release artifacts
+flutter build apk --release        # Android (.aab: flutter build appbundle)
+# flutter build ipa --release      # iOS (Stage 1, macOS only)
 ```
 
 ### Required Permissions
 | Platform | Permission | Purpose |
 |---|---|---|
-| Android | `READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO` | Access device gallery |
-| Android | `MANAGE_EXTERNAL_STORAGE` *(optional)* | Full folder management on older SDKs |
+| Android 13+ | `READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO` | Scoped access to device gallery |
+| Android 14+ | `READ_MEDIA_VISUAL_USER_SELECTED` | Partial ("limited") photo access |
+| Android ≤12 | `READ_EXTERNAL_STORAGE` (maxSdk 32) | Legacy gallery access |
 | iOS | `NSPhotoLibraryUsageDescription` | Access device photo library |
 | Both | Biometric | Locked folder authentication |
 

@@ -1,0 +1,6 @@
+# Copy to android/key.properties for signed release builds. NEVER commit the
+# real file (it is gitignored). CI injects these from repository secrets.
+storePassword=changeme
+keyPassword=changeme
+keyAlias=gallery-release
+storeFile=../keystores/gallery-release.jks
