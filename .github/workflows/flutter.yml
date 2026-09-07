@@ -113,15 +113,48 @@ jobs:
           path: app/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
 
-  # iOS archive job (Stage 1): requires a macOS runner. Enable once the
-  # ios/ platform folder lands — kept here so the pipeline shape is final.
-  # build-ios:
-  #   runs-on: macos-latest
-  #   defaults: { run: { working-directory: app } }
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: subosito/flutter-action@v2
-  #       with: { channel: stable, cache: true }
-  #     - run: flutter pub get
-  #     - run: flutter gen-l10n
-  #     - run: flutter build ios --release --no-codesign
+  build-ios:
+    name: Build iOS (release, no codesign)
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Versions
+        run: |
+          flutter --version
+          xcodebuild -version
+
+      - name: Dependencies
+        run: flutter pub get
+
+      - name: Generate localizations (gen-l10n)
+        run: flutter gen-l10n
+
+      - name: Build iOS release (no codesign)
+        run: |
+          set +e
+          flutter build ios --release --no-codesign > build-ios.log 2>&1
+          code=$?
+          if [ $code -ne 0 ]; then
+            grep -E "error|Error|FAILURE|Exception|failed" build-ios.log | head -n 60 | while read -r l; do
+              echo "::error title=ios-build::$l"
+            done
+          fi
+          tail -n 40 build-ios.log
+          exit $code
+
+      - name: Upload iOS app artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gallery-ios-app
+          path: app/build/ios/iphoneos/Runner.app
+          if-no-files-found: error

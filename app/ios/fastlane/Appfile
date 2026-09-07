@@ -1,0 +1,2 @@
+app_identifier("dev.gallery.app")
+# itc_team_id / team_id filled when store credentials are provisioned.

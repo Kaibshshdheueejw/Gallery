@@ -1,0 +1,11 @@
+# Fastlane stub (§9) — wired for future Play Store deployment.
+# Upload key lives in CI secrets (see android/key.properties.example).
+default_platform(:android)
+
+platform :android do
+  desc "Build a release AAB"
+  lane :beta do
+    gradle(task: "bundle", build_type: "Release")
+    # upload_to_play_store(track: "internal", aab: "...")  # enable with service account
+  end
+end

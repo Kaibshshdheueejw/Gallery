@@ -1,0 +1,2 @@
+package_name("dev.gallery.app")
+# json_key_file("") filled when the Play service account is provisioned.

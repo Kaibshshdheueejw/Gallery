@@ -1,0 +1,17 @@
+# Fastlane stub (§9) — wired for future store deployment.
+# Real signing credentials live in CI secrets / match; never in the repo.
+default_platform(:ios)
+
+platform :ios do
+  desc "Build a signed release archive (needs credentials via match)"
+  lane :beta do
+    # sync_code_signing(type: "appstore")   # enable with credentials
+    build_ios_app(
+      scheme: "Runner",
+      export_method: "app-store",
+      output_directory: "build/ios/ipa",
+      include_bitcode: false,
+    )
+    # upload_to_testflight(...)              # enable with App Store Connect key
+  end
+end

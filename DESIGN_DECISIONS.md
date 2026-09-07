@@ -16,18 +16,23 @@ the APK as an artifact. A stage is "done" only when its CI run is green.
 This is the exact iterative loop the prompt requires ("confirm each stage is
 working before moving to the next"), with CI substituting for a local SDK.
 
-**iOS:** building an iOS archive requires macOS. The workflow contains the
-`build-ios` job (currently commented) which activates in Stage 1 when the
-`ios/` platform folder lands, on a `macos-latest` runner
-(`--no-codesign`: App Store signing needs the developer's certificates and
-cannot live in this repository — the Fastlane stub documents where they go).
+**iOS:** building an iOS archive requires macOS — the `build-ios` CI job runs
+on `macos-latest` with `flutter build ios --release --no-codesign`. App Store
+signing needs the developer's certificates, which cannot live in this
+repository; the Fastlane stubs (`app/ios/fastlane`, `app/android/fastlane`)
+document exactly where credentials plug in. The `ios/` platform folder was
+materialized from the **official Flutter stable templates** (fetched via the
+GitHub contents API from `flutter/flutter@stable`) and rendered for this
+project (bundle id `dev.gallery.app`, display name `Gallery`, Swift Package
+Manager integration kept, plugin-hook template blocks removed) — this avoids
+hand-writing `project.pbxproj` drift.
 
 ## 1. Staged build plan (per prompt §12 "build this iteratively")
 
 | Stage | Scope | Status |
 |---|---|---|
-| 0 | Architecture scaffold, navigation shell, Liquid Glass system, timeline grid + sticky headers + pinch density + scrubber, viewer (swipe/zoom/dynamic tint), albums (smart + device), search (text/date/type + recents), For You (real memories engine), settings, permissions, Android target, CI | **in progress** |
-| 1 | iOS target (pbxproj, Info.plist, launch screen, icon set), hardened release config, integration test (import → edit → export) | planned |
+| 0 | Architecture scaffold, navigation shell, Liquid Glass system, timeline grid + sticky headers + pinch density + scrubber, viewer (swipe/zoom/dynamic tint), albums (smart + device), search (text/date/type + recents), For You (real memories engine), settings, permissions, Android target, CI | **code complete — CI: analyze ✅, APK build ✅; test-suite hardening in flight** |
+| 1 | iOS target (pbxproj/Info.plist/launch screen/icon set from the official stable Flutter templates, permission rationales), macOS CI job (`--no-codesign`), Fastlane stubs (ios+android), integration_test bootstrap; edit→export legs appended in Stages 4–6 | **in progress** |
 | 2 | Metadata DB (Drift), favorites/custom albums/drag-drop, multi-select batch actions, trash + auto-purge, locked folder (biometric + PIN), hero transitions, full video playback | planned |
 | 3 | On-device AI: ML Kit faces + OCR, scene tagging, NL smart search, duplicates/blur/quality clean-up, storage insights | planned |
 | 4 | Photo editor suite (crop/straighten/adjust/filters/auto-enhance/markup/magic eraser/portrait blur, non-destructive + history) | planned |
