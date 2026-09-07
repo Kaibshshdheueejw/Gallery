@@ -4,8 +4,8 @@ import 'package:gallery_app/data/media/thumb_cache.dart';
 import 'helpers/fake_media_source.dart';
 
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
-
+  // Pure Dart unit tests — no widget binding needed (the disk tier is
+  // disabled, so path_provider channels are never touched).
   group('ThumbCache (memory tier)', () {
     test('second get for the same key hits memory, not the source', () async {
       final source = FakeMediaSource();

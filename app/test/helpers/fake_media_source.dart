@@ -2,8 +2,17 @@ import 'dart:typed_data';
 
 import 'package:gallery_app/data/media/media_source.dart';
 import 'package:gallery_app/domain/models/media_item.dart';
-import 'package:gallery_app/features/shared/asset_thumb.dart'
-    show kTransparentImage;
+
+/// Minimal valid 1×1 transparent PNG (decodable by MemoryImage in widget
+/// tests). Kept local so the fake source has zero transitive plugin imports.
+final Uint8List kFakePng = Uint8List.fromList(const <int>[
+  0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
+  0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+  0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00,
+  0x0A, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
+  0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49,
+  0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+]);
 
 /// Deterministic in-memory media source for unit/widget tests (§9):
 /// screens and repositories are exercised without a device or plugin.
@@ -87,7 +96,7 @@ class FakeMediaSource implements MediaSource {
           name: entry.value.first.albumName,
           itemCount: entry.value.length,
           isSmart: false,
-          coverThumbFactory: () async => kTransparentImage,
+          coverThumbFactory: () async => kFakePng,
         ),
     ];
   }
@@ -103,12 +112,12 @@ class FakeMediaSource implements MediaSource {
   Future<Uint8List?> thumbnail(String itemId, {int width = 360, int height = 360}) async {
     thumbnailCalls++;
     // A real (1×1 transparent) PNG so widget tests can decode it.
-    return kTransparentImage;
+    return kFakePng;
   }
 
   @override
   Future<Uint8List?> fullBytes(String itemId) async {
     fullBytesCalls++;
-    return kTransparentImage;
+    return kFakePng;
   }
 }
