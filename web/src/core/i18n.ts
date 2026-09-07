@@ -11,7 +11,7 @@ export const LANGS: Array<{ id: Lang; label: string; native: string }> = [
 type Dict = Record<string, string>;
 
 const en: Dict = {
-  app_name: 'Nova Gallery',
+  app_name: 'Gallery',
   tab_foryou: 'For You',
   tab_timeline: 'Timeline',
   tab_albums: 'Albums',
@@ -88,10 +88,50 @@ const en: Dict = {
   faces_found: '{n} faces grouped',
   ocr_docs: '{n} documents read',
   processing: 'Scanning your library on-device…',
+  // redesign additions
+  recently_added: 'Recently added',
+  recently_viewed: 'Recently viewed',
+  large_files: 'Large files',
+  pictures: 'Pictures',
+  hidden_album: 'Hidden',
+  your_albums: 'Your albums',
+  new_album: 'New album',
+  add_to_album: 'Add to album',
+  rename: 'Rename',
+  copy: 'Copy',
+  hide: 'Hide',
+  unhide: 'Unhide',
+  move_to_album: 'Move to album',
+  set_wallpaper: 'Set as wallpaper',
+  set_contact: 'Set as contact picture',
+  open_with: 'Open with another app',
+  device_only: 'Available in the on-device build',
+  see_all: 'See all',
+  events: 'Events',
+  set_appearance: 'Appearance',
+  set_appearance_d: 'Theme, glass, accent & motion',
+  set_gallery: 'Gallery',
+  set_gallery_d: 'Browsing, sorting & media display',
+  set_playback: 'Playback',
+  set_playback_d: 'Video & media playback',
+  set_privacy: 'Privacy & Security',
+  set_privacy_d: 'Protect your private media',
+  set_storage: 'Storage',
+  set_storage_d: 'Analyse storage & clean up',
+  set_backup: 'Backup & Sync',
+  set_backup_d: 'Encrypted cloud backup',
+  set_notifications: 'Notifications',
+  set_notifications_d: 'Memories, cleanup & backup alerts',
+  set_ai: 'AI & Smart Features',
+  set_ai_d: 'On-device intelligence',
+  set_permissions: 'Permissions',
+  set_permissions_d: 'What Gallery can access',
+  set_about: 'About Gallery',
+  set_about_d: 'Version, licence & attributions',
 };
 
 const hi: Dict = {
-  app_name: 'नोवा गैलरी',
+  app_name: 'गैलरी',
   tab_foryou: 'आपके लिए',
   tab_timeline: 'टाइमलाइन',
   tab_albums: 'एल्बम',
@@ -171,7 +211,7 @@ const hi: Dict = {
 };
 
 const bn: Dict = {
-  app_name: 'নোভা গ্যালারি',
+  app_name: 'গ্যালারি',
   tab_foryou: 'আপনার জন্য',
   tab_timeline: 'টাইমলাইন',
   tab_albums: 'অ্যালবাম',
@@ -251,7 +291,7 @@ const bn: Dict = {
 };
 
 const es: Dict = {
-  app_name: 'Nova Gallery',
+  app_name: 'Gallery',
   tab_foryou: 'Para ti',
   tab_timeline: 'Cronología',
   tab_albums: 'Álbumes',

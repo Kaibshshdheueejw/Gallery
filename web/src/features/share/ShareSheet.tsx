@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { closeShare, toast, useApp } from '../../store';
 import { canvasToBlob, renderEdited } from '../editor/render';
 import { loadImage } from '../../ml/pipelines';
-import { Sheet, Segmented } from '../../components/ui';
+import { Sheet } from '../../components/ui';
+import { GlassSegmented, AnimatedButton } from '../../components/glass';
 import { Thumb } from '../../components/PhotoGrid';
 import { Icon } from '../../core/icons';
 import { translate } from '../../core/i18n';
@@ -64,12 +65,12 @@ export function ShareSheet() {
       <div className="share-preview">
         {selected.slice(0, 6).map((i) => <Thumb key={i.id} item={i} ratio="square" />)}
       </div>
-      <Segmented
+      <GlassSegmented
         value={preset}
         options={PRESETS.map((p) => ({ id: p.id, label: p.label }))}
         onChange={(v) => setPreset(v)}
       />
-      <Segmented
+      <GlassSegmented
         value={format}
         options={[{ id: 'jpeg', label: 'JPEG' }, { id: 'webp', label: 'WebP' }]}
         onChange={(v) => setFormat(v)}
@@ -91,9 +92,7 @@ export function ShareSheet() {
           </button>
         ))}
       </div>
-      <button type="button" className="primary-btn" onClick={doDownload}>
-        <Icon name="download" size={16} /> {t('export')}
-      </button>
+      <AnimatedButton icon="download" onClick={doDownload}>{t('export')}</AnimatedButton>
     </Sheet>
   );
 }

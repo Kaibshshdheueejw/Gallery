@@ -79,6 +79,7 @@ export interface MediaItem {
   id: string;
   kind: MediaKind;
   src: string;
+  thumb?: string;
   w: number;
   h: number;
   bytes: number;
@@ -96,7 +97,15 @@ export interface MediaItem {
   favorite: boolean;
   trashedAt: number | null;
   locked: boolean;
+  hidden: boolean;
   edits: EditState;
+}
+
+export interface CustomAlbum {
+  id: string;
+  name: string;
+  itemIds: string[];
+  createdAt: number;
 }
 
 export interface FaceCluster {
@@ -115,6 +124,26 @@ export interface BackupSettings {
   lastBackupAt: number | null;
 }
 
+export interface GlassSettings {
+  intensity: number;   // 0..100 — surface translucency + highlight strength
+  blur: number;        // 0..100 — backdrop blur amount
+  transparency: number;// 0..100 — how much content shows through
+}
+
+export interface AiSettings {
+  faces: boolean;
+  ocr: boolean;
+  duplicates: boolean;
+  blur: boolean;
+  scenes: boolean;
+}
+
+export interface NotificationSettings {
+  memories: boolean;
+  cleanup: boolean;
+  backup: boolean;
+}
+
 export interface Settings {
   mode: 'light' | 'dark' | 'system';
   seed: string;           // seed id or hex
@@ -125,8 +154,29 @@ export interface Settings {
   thumbRatio: 'square' | '4:3' | 'auto';
   retentionDays: 7 | 30 | 60 | 90;
   biometrics: boolean;
+  appLock: boolean;
   pin: string;
   backup: BackupSettings;
+  // liquid-glass appearance
+  glass: GlassSettings;
+  layout: 'comfortable' | 'standard' | 'compact';
+  navStyle: 'capsule' | 'compact';
+  animations: boolean;
+  animSpeed: 'relaxed' | 'standard' | 'fast';
+  haptics: boolean;
+  // gallery behaviour
+  defaultTab: TabId;
+  sortOrder: 'newest' | 'oldest';
+  showHidden: boolean;
+  autoCleanup: boolean;
+  // playback
+  autoplay: boolean;
+  loop: boolean;
+  // smart features
+  ai: AiSettings;
+  notifications: NotificationSettings;
+  wifiOnly: boolean;
+  chargingOnly: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -139,6 +189,23 @@ export const DEFAULT_SETTINGS: Settings = {
   thumbRatio: 'square',
   retentionDays: 30,
   biometrics: true,
+  appLock: false,
   pin: '1234',
   backup: { enabled: false, provider: 'drive', endpoint: '', encrypted: true, lastBackupAt: null },
+  glass: { intensity: 62, blur: 58, transparency: 46 },
+  layout: 'standard',
+  navStyle: 'capsule',
+  animations: true,
+  animSpeed: 'standard',
+  haptics: true,
+  defaultTab: 'foryou',
+  sortOrder: 'newest',
+  showHidden: false,
+  autoCleanup: true,
+  autoplay: true,
+  loop: true,
+  ai: { faces: true, ocr: true, duplicates: true, blur: true, scenes: true },
+  notifications: { memories: true, cleanup: true, backup: false },
+  wifiOnly: true,
+  chargingOnly: false,
 };

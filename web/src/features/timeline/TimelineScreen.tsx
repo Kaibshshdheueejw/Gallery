@@ -4,7 +4,8 @@ import { visibleItems, byDay, byMonth } from '../../domain/usecases/library';
 import { PhotoGrid } from '../../components/PhotoGrid';
 import { SelectionBar } from '../../components/SelectionBar';
 import { useSelection } from '../../components/useSelection';
-import { IconButton, Sheet, Segmented, SliderRow, EmptyState } from '../../components/ui';
+import { IconButton, Sheet, EmptyState } from '../../components/ui';
+import { GlassSegmented, GlassSlider } from '../../components/glass';
 import { formatDayHeader, formatMonthYear, groupBy, startOfYear, formatBytes } from '../../core/utils';
 import { translate } from '../../core/i18n';
 import { Icon } from '../../core/icons';
@@ -27,17 +28,19 @@ export function TimelineScreen() {
   const { group, cols } = LEVELS[level];
 
   const sections = useMemo(() => {
+    const ordered = settings.sortOrder === 'oldest' ? [...items].reverse() : items;
     const grouped = group === 'year'
-      ? groupBy(items, (i) => startOfYear(i.takenAt).toString())
+      ? groupBy(ordered, (i) => startOfYear(i.takenAt).toString())
       : group === 'month'
-        ? byMonth(items)
-        : byDay(items);
-    return grouped.map((g) => ({
+        ? byMonth(ordered)
+        : byDay(ordered);
+    const secs = grouped.map((g) => ({
       key: g.key,
       label: group === 'year' ? new Date(Number(g.key)).getFullYear().toString() : group === 'month' ? formatMonthYear(Number(g.key)) : formatDayHeader(Number(g.key)),
       items: g.items,
     }));
-  }, [items, group]);
+    return settings.sortOrder === 'oldest' ? secs.reverse() : secs;
+  }, [items, group, settings.sortOrder]);
 
   const selection = useSelection();
   const [optionsOpen, setOptionsOpen] = useState(false);
@@ -106,8 +109,8 @@ export function TimelineScreen() {
 
   return (
     <div className="screen">
-      <header className="app-bar">
-        <div>
+      <header className="page-head">
+        <div className="grow">
           <h1>{t('tab_timeline')}</h1>
           <span className="sub">{items.length} items · {formatBytes(totalBytes)}</span>
         </div>
@@ -134,8 +137,7 @@ export function TimelineScreen() {
           {sections.map((section) => (
             <section key={section.key} className="grid-section">
               <div className="sticky-head">
-                <span>{section.label}</span>
-                <em>{section.items.length}</em>
+                <span className="head-pill">{section.label}<em>{section.items.length}</em></span>
               </div>
               <PhotoGrid
                 items={section.items}
@@ -168,20 +170,19 @@ export function TimelineScreen() {
         <Sheet title="View options" onClose={() => setOptionsOpen(false)}>
           <div className="field">
             <span className="field-label">Group by</span>
-            <Segmented
+            <GlassSegmented
               value={group}
               options={[{ id: 'day', label: 'Day' }, { id: 'month', label: 'Month' }, { id: 'year', label: 'Year' }]}
               onChange={(v) => setSettings({ gridLevel: v === 'year' ? 0 : v === 'month' ? 1 : 3 })}
             />
           </div>
           <div className="field">
-            <span className="field-label">{t('grid_density')} · {cols} columns</span>
-            <SliderRow label="" value={level} min={0} max={LEVELS.length - 1} onChange={(v) => setSettings({ gridLevel: v })} format={(v) => ['Year', 'Month', 'Day', 'Day+', 'Day++', 'Day max'][v]} />
+            <GlassSlider label={`${t('grid_density')} · ${cols} columns`} value={level} min={0} max={LEVELS.length - 1} onChange={(v) => setSettings({ gridLevel: v })} format={(v) => ['Year', 'Month', 'Day', 'Day+', 'Day++', 'Day max'][v]} />
             <p className="hint">Pinch the grid or Ctrl/Cmd-scroll to change density, like the mobile app.</p>
           </div>
           <div className="field">
             <span className="field-label">{t('thumbnail_ratio')}</span>
-            <Segmented
+            <GlassSegmented
               value={settings.thumbRatio}
               options={[{ id: 'square', label: '1:1' }, { id: '4:3', label: '4:3' }, { id: 'auto', label: 'Original' }]}
               onChange={(v) => setSettings({ thumbRatio: v })}

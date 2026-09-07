@@ -1,4 +1,4 @@
-# Nova Gallery — web test build
+# Gallery — web test build
 
 Browser-runnable prototype of the Flutter spec in [`../README.md`](../README.md), built so the
 app can be exercised end-to-end in the Arena workspace preview (the Flutter SDK / mobile
@@ -22,6 +22,17 @@ Sample media is prepared from bundled stock thumbnails:
 ```bash
 node ../scripts/prepare-media.mjs   # normalizes image-search/* into public/media + manifest.json
 ```
+
+## Design system (Liquid Glass)
+
+All surfaces, motion and materials derive from `src/core/design.ts` (tokens for radius,
+spacing, glass blur/transparency/intensity, spring curves, durations) and `src/core/theme.ts`
+(Material You tonal palettes). Reusable primitives live in `src/components/glass.tsx`:
+`GlassSurface`, `FloatingNavigation`, `SettingsRow`, `SettingsSection`, `AnimatedButton`,
+`AnimatedCard`, `AnimatedToggle`, `GlassSlider`, `GlassSegmented`.
+
+Glass intensity, blur, transparency, layout density, navigation style and animation speed are
+user-tunable in **Settings → Appearance** and apply live via CSS custom properties.
 
 ## What is real vs simulated
 

@@ -72,13 +72,19 @@ const MAP = {
 
 const im = (...args) => execFileSync('convert', args, { stdio: ['ignore', 'pipe', 'pipe'] });
 
+const THUMBS = path.join(OUT, 'thumbs');
+fs.mkdirSync(THUMBS, { recursive: true });
+
 const manifest = [];
 const write = (id, srcFile, ops = []) => {
   const out = path.join(OUT, `${id}.jpg`);
   im(srcFile, '-auto-orient', '-strip', ...ops, '-resize', '1000x1000>', '-quality', '76', out);
+  // display-size thumbnail so grids never decode the full image
+  const thumb = path.join(THUMBS, `${id}.jpg`);
+  im(srcFile, '-auto-orient', '-strip', ...ops, '-resize', '380x380>', '-quality', '72', thumb);
   const [dims] = execFileSync('identify', ['-format', '%w %h', out]).toString().split('\n');
   const [w, h] = dims.split(' ').map(Number);
-  manifest.push({ id, file: `media/${id}.jpg`, w, h, bytes: fs.statSync(out).size });
+  manifest.push({ id, file: `media/${id}.jpg`, thumb: `media/thumbs/${id}.jpg`, w, h, bytes: fs.statSync(out).size, thumbBytes: fs.statSync(thumb).size });
 };
 
 for (const [src, id] of Object.entries(MAP)) {

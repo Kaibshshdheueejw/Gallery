@@ -171,6 +171,7 @@ export function buildScreenshotItems(): MediaItem[] {
     favorite: false,
     trashedAt: null,
     locked: false,
+    hidden: false,
     edits: emptyEdit(),
   }));
 }

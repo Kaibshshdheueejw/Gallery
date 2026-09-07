@@ -9,7 +9,7 @@ export interface GridProps {
   cols: number;
   ratio: 'square' | '4:3' | 'auto';
   selection?: Set<string> | null;
-  onOpen?: (index: number) => void;
+  onOpen?: (index: number, rect?: DOMRect) => void;
   onToggle?: (id: string) => void;
   onLongPress?: (id: string) => void;
   gap?: number;
@@ -25,7 +25,7 @@ export function Thumb({ item, ratio }: { item: MediaItem; ratio: GridProps['rati
   return (
     <div className="thumb" style={style}>
       <img
-        src={item.src}
+        src={item.thumb ?? item.src}
         alt={item.title}
         loading="lazy"
         decoding="async"
@@ -71,9 +71,9 @@ export function PhotoGrid({ items, cols, ratio, selection, onOpen, onToggle, onL
     press.current = null;
   };
 
-  const handleClick = (index: number, id: string) => {
+  const handleClick = (index: number, id: string, el: HTMLElement) => {
     if (selecting && onToggle) onToggle(id);
-    else onOpen?.(index);
+    else onOpen?.(index, el.getBoundingClientRect());
   };
 
   const gridStyle: React.CSSProperties = ratio === 'auto'
@@ -87,7 +87,7 @@ export function PhotoGrid({ items, cols, ratio, selection, onOpen, onToggle, onL
           key={item.id}
           className={`cell${selection?.has(item.id) ? ' selected' : ''}${selecting ? ' selecting' : ''}`}
           style={ratio === 'auto' ? { breakInside: 'avoid', marginBottom: gap } : undefined}
-          onClick={() => handleClick(index, item.id)}
+          onClick={(e) => handleClick(index, item.id, e.currentTarget)}
           onPointerDown={(e) => startPress(e, item.id)}
           onPointerMove={movePress}
           onPointerUp={endPress}
@@ -95,7 +95,7 @@ export function PhotoGrid({ items, cols, ratio, selection, onOpen, onToggle, onL
           onContextMenu={(e) => { e.preventDefault(); onLongPress?.(item.id); }}
           role="button"
           tabIndex={0}
-          onKeyDown={(e) => { if (e.key === 'Enter') handleClick(index, item.id); }}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleClick(index, item.id, e.currentTarget); }}
         >
           <Thumb item={item} ratio={ratio} />
           {badge?.(item) && <span className="badge bottom-left">{badge!(item)}</span>}

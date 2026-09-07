@@ -24,8 +24,8 @@ export function SearchScreen() {
 
   return (
     <div className="screen">
-      <header className="app-bar">
-        <div className="search-field grow">
+      <header className="page-head">
+        <div className="search-glass glass glass-subtle grow" style={{ margin: 0 }}>
           <Icon name="search" size={19} />
           <input
             value={query}

@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { navigate, toast, trashItems, useApp } from '../../store';
 import { storageReport } from '../../domain/usecases/storageInsights';
-import { Donut, IconButton, SectionTitle } from '../../components/ui';
+import { Donut, SectionTitle } from '../../components/ui';
 import { Icon } from '../../core/icons';
 import { translate } from '../../core/i18n';
 import { formatBytes } from '../../core/utils';
@@ -15,12 +15,14 @@ export function StorageScreen() {
 
   return (
     <div className="screen">
-      <header className="app-bar with-back">
-        <IconButton icon="back" label="Back" onClick={() => navigate({ name: 'tabs' })} />
+      <header className="page-head with-back">
+        <button type="button" className="back-btn glass glass-subtle" onClick={() => navigate({ name: 'tabs' })} aria-label="Back">
+          <Icon name="back" size={20} />
+        </button>
         <div className="grow"><h1>{t('storage_insights')}</h1><span className="sub">{formatBytes(storage.total)} in library</span></div>
       </header>
       <div className="scroll-area padded">
-        <div className="storage-summary big">
+        <div className="storage-summary big glass glass-subtle">
           <Donut size={190} slices={storage.slices.map((s) => ({ color: s.color, fraction: s.bytes / storage.total }))} />
           <div className="legend grow">
             {storage.slices.map((s) => (
@@ -37,7 +39,7 @@ export function StorageScreen() {
         <SectionTitle>{t('cleanup')}</SectionTitle>
         <div className="card-list">
           {storage.cleanup.map((c) => (
-            <div className="info-card" key={c.id}>
+            <div className="info-card glass glass-subtle" key={c.id}>
               <span className="card-icon"><Icon name={c.id === 'duplicates' ? 'copy' : c.id === 'blurry' ? 'eye' : 'scanText'} size={20} /></span>
               <div className="grow">
                 <strong>{c.label}</strong>

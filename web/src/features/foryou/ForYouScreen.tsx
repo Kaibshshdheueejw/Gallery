@@ -3,6 +3,7 @@ import { navigate, openViewer, toast, trashItems, useApp } from '../../store';
 import { memories, onThisDay, faceClusters, visibleItems } from '../../domain/usecases/library';
 import { storageReport } from '../../domain/usecases/storageInsights';
 import { Thumb } from '../../components/PhotoGrid';
+import { AnimatedButton } from '../../components/glass';
 import { Donut, IconButton, ProgressBar, SectionTitle } from '../../components/ui';
 import { Icon } from '../../core/icons';
 import { translate } from '../../core/i18n';
@@ -36,6 +37,15 @@ function MemorySlideshow({ items, onClose }: { items: MediaItem[]; onClose: () =
   );
 }
 
+/** intelligent aspect: landscape → 16/10, portrait → 4/5, else 1/1 */
+function memAspect(item: MediaItem | undefined): string {
+  if (!item) return '16 / 10';
+  const ar = item.w / item.h;
+  if (ar > 1.15) return '16 / 10';
+  if (ar < 0.9) return '4 / 5';
+  return '1 / 1';
+}
+
 export function ForYouScreen() {
   const app = useApp();
   const { settings, items, report } = app;
@@ -44,20 +54,20 @@ export function ForYouScreen() {
 
   const mems = useMemo(() => memories(items), [items]);
   const otd = useMemo(() => onThisDay(items), [items]);
-  const clusters = useMemo(() => faceClusters(items, app.faceNames), [items, app.faceNames]);
-  const dupGroups = report?.duplicates ?? [];
+  const clusters = useMemo(() => (settings.ai.faces ? faceClusters(items, app.faceNames) : []), [items, app.faceNames, settings.ai.faces]);
+  const dupGroups = (settings.ai.duplicates ? report?.duplicates : undefined) ?? [];
   const storage = useMemo(() => storageReport(items, dupGroups), [items, dupGroups]);
-  const vis = visibleItems(items);
 
   const dupRemovable = dupGroups.flatMap((g) => g.slice(1));
   const dupBytes = items.filter((i) => dupRemovable.includes(i.id)).reduce((s, i) => s + i.bytes, 0);
-  const blurryIds = storage.cleanup.find((c) => c.id === 'blurry')?.itemIds ?? [];
+  const blurryIds = (settings.ai.blur ? storage.cleanup.find((c) => c.id === 'blurry')?.itemIds : undefined) ?? [];
+  const showCleanup = settings.notifications.cleanup && (dupGroups.length > 0 || blurryIds.length > 0);
 
   if (app.status !== 'ready') {
     return (
       <div className="screen center-col">
-        <Icon name="sparkle" size={40} className="spin-slow" />
-        <h2>{t('processing')}</h2>
+        <Icon name="sparkle" size={42} className="spin-slow" />
+        <h2 style={{ fontSize: 17, fontWeight: 650 }}>{t('processing')}</h2>
         <ProgressBar value={app.scan.total ? app.scan.done / app.scan.total : 0} />
         <span className="muted">{app.scan.done}/{app.scan.total} · {t('on_device')}</span>
       </div>
@@ -66,8 +76,11 @@ export function ForYouScreen() {
 
   return (
     <div className="screen">
-      <header className="app-bar">
-        <div><h1>{t('app_name')}</h1><span className="sub">{new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</span></div>
+      <header className="page-head">
+        <div className="grow">
+          <h1>{new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</h1>
+          <span className="sub">{t('app_name')} · {visibleItems(items).length} items</span>
+        </div>
         <div className="bar-actions">
           <IconButton icon="storage" label={t('storage_insights')} onClick={() => navigate({ name: 'storage' })} />
           <IconButton icon="settings" label={t('settings')} onClick={() => navigate({ name: 'settings' })} />
@@ -75,19 +88,38 @@ export function ForYouScreen() {
       </header>
 
       <div className="scroll-area padded">
-        {mems.length > 0 && (
+        {settings.notifications.memories && mems.length > 0 && (
           <>
             <SectionTitle>{t('memories')}</SectionTitle>
-            <div className="h-scroll memories">
+            <div className="mem-rail">
               {mems.map((m) => (
-                <button key={m.id} type="button" className="memory-card" onClick={() => setPlaying(m.items)}>
-                  <span className="cover">{m.items[0] && <Thumb item={m.items[0]} ratio="4:3" />}</span>
-                  <span className="meta">
-                    <strong>{m.id}</strong>
-                    <em>{formatMonthYear(m.at)} · {m.items.length} items · {relativeTime(m.at)}</em>
-                    <span className="play-pill"><Icon name="play" size={12} filled /> Play</span>
+                <div
+                  key={m.id}
+                  role="button"
+                  tabIndex={0}
+                  className="mem-card pressable"
+                  style={{ aspectRatio: memAspect(m.items[0]) }}
+                  onClick={() => openViewer(m.items.map((i) => i.id), 0)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') openViewer(m.items.map((i) => i.id), 0); }}
+                >
+                  <span className="mem-media">{m.items[0] && <img src={m.items[0].src} alt={m.id} loading="lazy" decoding="async" />}</span>
+                  <span className="mem-scrim" />
+                  <span className="mem-badge">{t('memories')}</span>
+                  <span className="mem-glass">
+                    <span className="mem-txt">
+                      <strong>{m.id}</strong>
+                      <em>{formatMonthYear(m.at)} · {m.items.length} items · {relativeTime(m.at)}</em>
+                    </span>
+                    <button
+                      type="button"
+                      className="mem-play"
+                      aria-label="Play memory"
+                      onClick={(e) => { e.stopPropagation(); setPlaying(m.items); }}
+                    >
+                      <Icon name="play" size={14} filled />
+                    </button>
                   </span>
-                </button>
+                </div>
               ))}
             </div>
           </>
@@ -96,9 +128,9 @@ export function ForYouScreen() {
         {otd.length > 0 && (
           <>
             <SectionTitle>{t('on_this_day')}</SectionTitle>
-            <div className="h-scroll strip">
-              {otd.map((i) => (
-                <button key={i.id} type="button" className="strip-card" onClick={() => openViewer(otd.map((x) => x.id), otd.indexOf(i))}>
+            <div className="rail">
+              {otd.map((i, idx) => (
+                <button key={i.id} type="button" className="strip-card pressable" onClick={() => openViewer(otd.map((x) => x.id), idx)}>
                   <Thumb item={i} ratio="square" />
                   <em>{new Date(i.takenAt).getFullYear()}</em>
                 </button>
@@ -107,55 +139,44 @@ export function ForYouScreen() {
           </>
         )}
 
-        <SectionTitle>{t('cleanup')}</SectionTitle>
-        <div className="card-list">
-          {dupGroups.length > 0 && (
-            <div className="info-card">
-              <span className="card-icon"><Icon name="copy" size={20} /></span>
-              <div className="grow">
-                <strong>{dupGroups.length} duplicate group{dupGroups.length > 1 ? 's' : ''}</strong>
-                <em>{dupRemovable.length} extra copies · {formatBytes(dupBytes)} recoverable</em>
-                <div className="card-actions">
-                  <button type="button" className="ghost-btn" onClick={() => navigate({ name: 'album', album: { type: 'smart', id: 'duplicates', title: t('duplicates') } })}>Review</button>
-                  <button type="button" className="ghost-btn danger" onClick={() => { trashItems(dupRemovable); toast(`Cleaned ${dupRemovable.length} duplicates`); }}>
-                    <Icon name="broom" size={14} /> Clean
-                  </button>
+        {showCleanup && (
+          <>
+            <SectionTitle>{t('cleanup')}</SectionTitle>
+            <div className="card-list">
+              {dupGroups.length > 0 && (
+                <div className="info-card glass glass-subtle">
+                  <span className="card-icon"><Icon name="copy" size={20} /></span>
+                  <div className="grow">
+                    <strong>{dupGroups.length} duplicate group{dupGroups.length > 1 ? 's' : ''}</strong>
+                    <em>{dupRemovable.length} extra copies · {formatBytes(dupBytes)} recoverable</em>
+                    <div className="card-actions">
+                      <AnimatedButton kind="ghost" onClick={() => navigate({ name: 'album', album: { type: 'smart', id: 'duplicates', title: t('duplicates') } })}>Review</AnimatedButton>
+                      <AnimatedButton kind="danger" icon="broom" onClick={() => { trashItems(dupRemovable); toast(`Cleaned ${dupRemovable.length} duplicates`); }}>Clean</AnimatedButton>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
-          {blurryIds.length > 0 && (
-            <div className="info-card">
-              <span className="card-icon"><Icon name="eye" size={20} /></span>
-              <div className="grow">
-                <strong>{blurryIds.length} blurry shot{blurryIds.length > 1 ? 's' : ''}</strong>
-                <em>flagged by the on-device sharpness model (laplacian variance)</em>
-                <div className="card-actions">
-                  <button type="button" className="ghost-btn" onClick={() => navigate({ name: 'album', album: { type: 'smart', id: 'blurry', title: t('blurry') } })}>Review</button>
-                  <button type="button" className="ghost-btn danger" onClick={() => trashItems(blurryIds)}><Icon name="trash" size={14} /> {t('delete')}</button>
+              )}
+              {blurryIds.length > 0 && (
+                <div className="info-card glass glass-subtle">
+                  <span className="card-icon"><Icon name="eye" size={20} /></span>
+                  <div className="grow">
+                    <strong>{blurryIds.length} blurry shot{blurryIds.length > 1 ? 's' : ''}</strong>
+                    <em>flagged by the on-device sharpness model (laplacian variance)</em>
+                    <div className="card-actions">
+                      <AnimatedButton kind="ghost" onClick={() => navigate({ name: 'album', album: { type: 'smart', id: 'blurry', title: t('blurry') } })}>Review</AnimatedButton>
+                      <AnimatedButton kind="danger" icon="trash" onClick={() => trashItems(blurryIds)}>{t('delete')}</AnimatedButton>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
-          )}
-          {storage.cleanup.filter((c) => c.id === 'old-screenshots').map((c) => (
-            <div className="info-card" key={c.id}>
-              <span className="card-icon"><Icon name="scanText" size={20} /></span>
-              <div className="grow">
-                <strong>{c.label}</strong>
-                <em>{c.itemIds.length} items · {formatBytes(c.bytes)} · {c.hint}</em>
-                <div className="card-actions">
-                  <button type="button" className="ghost-btn" onClick={() => navigate({ name: 'album', album: { type: 'smart', id: 'screenshots', title: t('screenshots') } })}>Review</button>
-                  <button type="button" className="ghost-btn danger" onClick={() => trashItems(c.itemIds)}><Icon name="trash" size={14} /> {t('delete')}</button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+          </>
+        )}
 
         <SectionTitle action={<button type="button" className="text-btn" onClick={() => navigate({ name: 'storage' })}>{t('storage_insights')} <Icon name="chevronRight" size={14} /></button>}>
           Space
         </SectionTitle>
-        <div className="storage-summary">
+        <div className="storage-summary glass glass-subtle">
           <Donut slices={storage.slices.map((s) => ({ color: s.color, fraction: s.bytes / storage.total }))} />
           <div className="legend grow">
             {storage.slices.map((s) => (
@@ -172,11 +193,11 @@ export function ForYouScreen() {
         {clusters.length > 0 && (
           <>
             <SectionTitle>{t('albums_people')}</SectionTitle>
-            <div className="h-scroll people">
+            <div className="rail">
               {clusters.map((c) => {
                 const first = items.find((i) => i.id === c.itemIds[0]);
                 return (
-                  <button key={c.id} type="button" className="person-card" onClick={() => navigate({ name: 'album', album: { type: 'person', id: c.id, title: c.name } })}>
+                  <button key={c.id} type="button" className="person-card pressable" onClick={() => navigate({ name: 'album', album: { type: 'person', id: c.id, title: c.name } })}>
                     <span className="avatar">{first && <Thumb item={first} ratio="square" />}</span>
                     <strong>{c.name}</strong>
                     <em>{c.itemIds.length}</em>
@@ -200,5 +221,4 @@ export function ForYouScreen() {
       {playing && <MemorySlideshow items={playing} onClose={() => setPlaying(null)} />}
     </div>
   );
-
 }

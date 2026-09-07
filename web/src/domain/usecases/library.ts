@@ -4,7 +4,8 @@ import { PEOPLE } from '../../data/datasources/curated';
 import { groupBy, startOfDay, startOfMonth } from '../../core/utils';
 
 export const isTrashed = (i: MediaItem) => i.trashedAt !== null;
-export const isVisible = (i: MediaItem) => !isTrashed(i) && !i.locked;
+export const isVisible = (i: MediaItem) => !isTrashed(i) && !i.locked && !i.hidden;
+export const hiddenItems = (items: MediaItem[]) => items.filter((i) => i.hidden && !isTrashed(i));
 
 export const trashedItems = (items: MediaItem[]) => items.filter(isTrashed).sort((a, b) => (b.trashedAt ?? 0) - (a.trashedAt ?? 0));
 export const lockedItems = (items: MediaItem[]) => items.filter((i) => i.locked && !isTrashed(i));
@@ -30,6 +31,14 @@ export function places(items: MediaItem[]) {
 export function events(items: MediaItem[]) {
   return groupBy(visibleItems(items).filter((i) => i.event), (i) => i.event!)
     .sort((a, b) => b.items[0].takenAt - a.items[0].takenAt);
+}
+
+export const largeFiles = (items: MediaItem[]) =>
+  visibleItems(items).filter((i) => i.bytes >= 90_000).sort((a, b) => b.bytes - a.bytes);
+
+export function recentlyViewedItems(items: MediaItem[], viewed: string[]): MediaItem[] {
+  const map = new Map(items.map((i) => [i.id, i]));
+  return viewed.map((id) => map.get(id)).filter((i): i is MediaItem => Boolean(i) && isVisible(i as MediaItem));
 }
 
 export function faceClusters(items: MediaItem[], names: Record<string, string>): FaceCluster[] {

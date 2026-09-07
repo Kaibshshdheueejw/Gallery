@@ -2,21 +2,87 @@ import { useMemo, useState } from 'react';
 import { navigate, openViewer, setLocked, useApp } from '../../store';
 import { lockedItems, visibleItems } from '../../domain/usecases/library';
 import { PhotoGrid } from '../../components/PhotoGrid';
-import { SelectionBar } from '../../components/SelectionBar';
 import { useSelection } from '../../components/useSelection';
 import { EmptyState, IconButton, Sheet } from '../../components/ui';
+import { AnimatedButton } from '../../components/glass';
 import { Icon } from '../../core/icons';
 import { translate } from '../../core/i18n';
+import { haptic } from '../../core/haptics';
+
+/** Shared biometric / PIN gate (locked folder + app lock). */
+export function LockGate({ onUnlock, title }: { onUnlock: () => void; title?: string }) {
+  const app = useApp();
+  const { settings } = app;
+  const t = (k: string) => translate(settings.lang, k);
+  const [scanning, setScanning] = useState(false);
+  const [pinEntry, setPinEntry] = useState('');
+  const [pinError, setPinError] = useState(false);
+  const [usePin, setUsePin] = useState(false);
+
+  return (
+    <div className="screen">
+      <div className="lock-gate">
+        {title && <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.4px' }}>{title}</h1>}
+        {settings.biometrics && !usePin ? (
+          <>
+            <button
+              type="button"
+              className={`fingerprint glass glass-strong${scanning ? ' scanning' : ''}`}
+              onClick={() => {
+                haptic('select');
+                setScanning(true);
+                setTimeout(() => { setScanning(false); haptic('success'); onUnlock(); }, 1250);
+              }}
+              aria-label={t('unlock_biometric')}
+            >
+              <Icon name="fingerprint" size={62} strokeWidth={1.25} />
+            </button>
+            <p className="muted" style={{ fontSize: 13.5 }}>{scanning ? 'Scanning…' : t('unlock_biometric')}</p>
+            <button type="button" className="text-btn" onClick={() => setUsePin(true)}>{t('unlock_pin')} →</button>
+          </>
+        ) : (
+          <div className="pin-pad" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18 }}>
+            <div className={`pin-dots${pinError ? ' error' : ''}`}>
+              {[0, 1, 2, 3].map((i) => <i key={i} className={pinEntry.length > i ? 'on' : ''} />)}
+            </div>
+            <div className="pad">
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'].map((k, i) => (
+                k === '' ? <span key={i} /> : (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => {
+                      haptic('tap');
+                      if (k === '⌫') { setPinEntry((p) => p.slice(0, -1)); setPinError(false); return; }
+                      const next = (pinEntry + k).slice(0, 4);
+                      setPinEntry(next);
+                      if (next.length === 4) {
+                        if (next === settings.pin) { haptic('success'); onUnlock(); }
+                        else { setPinError(true); haptic('dismiss'); setTimeout(() => { setPinEntry(''); setPinError(false); }, 480); }
+                      }
+                    }}
+                  >
+                    {k}
+                  </button>
+                )
+              ))}
+            </div>
+            <p className="hint">Demo PIN: {settings.pin}</p>
+            {settings.biometrics && (
+              <button type="button" className="text-btn" onClick={() => { setUsePin(false); setPinEntry(''); }}>← {t('unlock_biometric')}</button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function LockedScreen() {
   const app = useApp();
   const { settings, items } = app;
   const t = (k: string) => translate(settings.lang, k);
   const [unlocked, setUnlocked] = useState(false);
-  const [scanning, setScanning] = useState(false);
-  const [pinEntry, setPinEntry] = useState('');
-  const [pinError, setPinError] = useState(false);
-  const [usePin, setUsePin] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const selection = useSelection();
   const pickerSel = useSelection();
@@ -26,69 +92,30 @@ export function LockedScreen() {
   if (!unlocked) {
     return (
       <div className="screen">
-        <header className="app-bar with-back">
-          <IconButton icon="back" label="Back" onClick={() => navigate({ name: 'tabs' })} />
+        <header className="page-head with-back">
+          <button type="button" className="back-btn glass glass-subtle" onClick={() => navigate({ name: 'tabs' })} aria-label="Back">
+            <Icon name="back" size={20} />
+          </button>
           <div className="grow"><h1>{t('locked_folder')}</h1></div>
         </header>
-        <div className="lock-gate">
-          {settings.biometrics && !usePin && (
-            <>
-              <button
-                type="button"
-                className={`fingerprint${scanning ? ' scanning' : ''}`}
-                onClick={() => {
-                  setScanning(true);
-                  setTimeout(() => { setScanning(false); setUnlocked(true); }, 1300);
-                }}
-                aria-label={t('unlock_biometric')}
-              >
-                <Icon name="fingerprint" size={64} strokeWidth={1.3} />
-              </button>
-              <p>{scanning ? 'Scanning…' : t('unlock_biometric')}</p>
-              <button type="button" className="text-btn" onClick={() => setUsePin(true)}>{t('unlock_pin')} →</button>
-            </>
-          )}
-          {(usePin || !settings.biometrics) && (
-            <div className="pin-pad">
-              <div className={`pin-dots${pinError ? ' error' : ''}`}>
-                {[0, 1, 2, 3].map((i) => <i key={i} className={pinEntry.length > i ? 'on' : ''} />)}
-              </div>
-              <div className="pad">
-                {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'].map((k, i) => (
-                  k === '' ? <span key={i} /> : (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => {
-                        if (k === '⌫') { setPinEntry((p) => p.slice(0, -1)); setPinError(false); return; }
-                        const next = (pinEntry + k).slice(0, 4);
-                        setPinEntry(next);
-                        if (next.length === 4) {
-                          if (next === settings.pin) setUnlocked(true);
-                          else { setPinError(true); setTimeout(() => { setPinEntry(''); setPinError(false); }, 500); }
-                        }
-                      }}
-                    >
-                      {k}
-                    </button>
-                  )
-                ))}
-              </div>
-              <p className="hint">Demo PIN: {settings.pin}</p>
-              {settings.biometrics && <button type="button" className="text-btn" onClick={() => { setUsePin(false); setPinEntry(''); }}>← {t('unlock_biometric')}</button>}
-            </div>
-          )}
-        </div>
+        <LockGate onUnlock={() => setUnlocked(true)} />
       </div>
     );
   }
 
   return (
     <div className="screen">
-      <header className="app-bar with-back">
-        <IconButton icon="back" label="Back" onClick={() => navigate({ name: 'tabs' })} />
-        <div className="grow"><h1>{t('locked_folder')}</h1><span className="sub">{list.length} hidden items</span></div>
-        <IconButton icon="plus" label="Add items" onClick={() => setAddOpen(true)} />
+      <header className="page-head with-back">
+        <button type="button" className="back-btn glass glass-subtle" onClick={() => navigate({ name: 'tabs' })} aria-label="Back">
+          <Icon name="back" size={20} />
+        </button>
+        <div className="grow">
+          <h1>{t('locked_folder')}</h1>
+          <span className="sub">{list.length} hidden items · kept on this device</span>
+        </div>
+        <div className="bar-actions">
+          <IconButton icon="plus" label="Add items" onClick={() => setAddOpen(true)} />
+        </div>
       </header>
       <div className="scroll-area padded">
         {list.length === 0
@@ -107,11 +134,10 @@ export function LockedScreen() {
         <div className="scroll-pad" />
       </div>
       {selection.active && (
-        <div className="selection-bar">
+        <div className="selection-bar glass glass-strong">
           <span className="count">{t('selected').replace('{n}', String(selection.selection.size))}</span>
           <div className="actions">
             <IconButton icon="lockOpen" label={t('unlock')} onClick={() => { setLocked([...selection.selection], false); selection.clear(); }} />
-            <IconButton icon="trash" label={t('delete')} onClick={() => { setLocked([...selection.selection], false); selection.clear(); }} />
             <IconButton icon="close" label={t('cancel')} onClick={selection.clear} />
           </div>
         </div>
@@ -127,14 +153,13 @@ export function LockedScreen() {
               onToggle={pickerSel.toggle}
             />
           </div>
-          <button
-            type="button"
-            className="primary-btn"
+          <AnimatedButton
+            icon="lock"
             disabled={!pickerSel.active}
             onClick={() => { setLocked([...pickerSel.selection], true); pickerSel.clear(); setAddOpen(false); }}
           >
-            <Icon name="lock" size={16} /> {t('lock')}
-          </button>
+            {t('lock')}
+          </AnimatedButton>
         </Sheet>
       )}
     </div>

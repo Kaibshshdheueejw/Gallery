@@ -4,6 +4,7 @@ import { trashedItems } from '../../domain/usecases/library';
 import { PhotoGrid } from '../../components/PhotoGrid';
 import { useSelection } from '../../components/useSelection';
 import { EmptyState, IconButton } from '../../components/ui';
+import { Icon } from '../../core/icons';
 import { translate } from '../../core/i18n';
 
 export function TrashScreen() {
@@ -17,8 +18,10 @@ export function TrashScreen() {
 
   return (
     <div className="screen">
-      <header className="app-bar with-back">
-        <IconButton icon="back" label="Back" onClick={() => navigate({ name: 'tabs' })} />
+      <header className="page-head with-back">
+        <button type="button" className="back-btn glass glass-subtle" onClick={() => navigate({ name: 'tabs' })} aria-label="Back">
+          <Icon name="back" size={20} />
+        </button>
         <div className="grow">
           <h1>{t('trash')}</h1>
           <span className="sub">{list.length} items · auto-purge after {settings.retentionDays} days</span>
@@ -43,7 +46,7 @@ export function TrashScreen() {
         <div className="scroll-pad" />
       </div>
       {selection.active && (
-        <div className="selection-bar">
+        <div className="selection-bar glass glass-strong">
           <span className="count">{t('selected').replace('{n}', String(selection.selection.size))}</span>
           <div className="actions">
             <IconButton icon="restore" label={t('restore')} onClick={() => { restoreItems([...selection.selection]); selection.clear(); }} />

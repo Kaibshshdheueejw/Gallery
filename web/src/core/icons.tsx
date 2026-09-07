@@ -82,6 +82,15 @@ const P: Record<string, JSX.Element> = {
   wifi: (<><path d="M3 9a14 14 0 0 1 18 0M6.2 12.4a9.5 9.5 0 0 1 11.6 0M9.4 15.8a5 5 0 0 1 5.2 0" /><circle cx="12" cy="19" r="1.2" /></>),
   star: (<path d="M12 3.8l2.5 5.2 5.7.8-4.1 4 1 5.7-5.1-2.7-5.1 2.7 1-5.7-4.1-4 5.7-.8z" />),
   layers: (<><path d="M12 3.5l9 5-9 5-9-5z" /><path d="M3.5 13l8.5 4.7L20.5 13" /></>),
+  bell: (<><path d="M6 10a6 6 0 1 1 12 0c0 4 1.5 5.5 1.5 5.5h-15S6 14 6 10z" /><path d="M10 19a2.2 2.2 0 0 0 4 0" /></>),
+  key: (<><circle cx="8" cy="14.5" r="4" /><path d="M11.5 12L20 3.5M16.5 7l2.5 2.5M14 9.5l2 2" /></>),
+  eyeOff: (<><path d="M4 4l16 16" /><path d="M9.9 5.2A9.8 9.8 0 0 1 12 5c6 0 9.5 7 9.5 7a17 17 0 0 1-3 3.9M6.2 6.9A16.6 16.6 0 0 0 2.5 12S6 19 12 19a9.7 9.7 0 0 0 4-.9" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /></>),
+  stack: (<><rect x="3.5" y="7.5" width="13" height="13" rx="2.5" /><path d="M7.5 4.5h11a2 2 0 0 1 2 2v11" /></>),
+  playCircle: (<><circle cx="12" cy="12" r="8.5" /><path d="M10.2 8.8v6.4L15.4 12z" /></>),
+  gauge2: (<><path d="M4.5 15.5a8 8 0 1 1 15 0" /><path d="M12 15.5l3.4-4.6" /><circle cx="12" cy="15.5" r="1.4" /></>),
+  sort: (<><path d="M7 4.5v15M7 19.5l-3-3M7 19.5l3-3" /><path d="M17 19.5v-15M17 4.5l-3 3M17 4.5l3 3" /></>),
+  pip: (<><rect x="3" y="5" width="18" height="14" rx="2.5" /><rect x="12" y="12" width="7" height="5" rx="1.2" fill="currentColor" stroke="none" /></>),
+  contact: (<><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="10" r="3" /><path d="M6.5 18.5a6 6 0 0 1 11 0" /></>),
 };
 
 export type IconName = keyof typeof P;

@@ -4,7 +4,7 @@ import { emptyEdit } from '../models';
 import { CURATED } from './curated';
 import { buildScreenshotItems } from './screenshots';
 
-interface ManifestEntry { id: string; file: string; w: number; h: number; bytes: number }
+interface ManifestEntry { id: string; file: string; thumb?: string; w: number; h: number; bytes: number }
 
 const FALLBACK_CAM: CameraMeta = { model: 'Pixel 9 Pro', lens: '24mm f/1.7', iso: 100, shutter: '1/240s', aperture: 'f/1.7' };
 
@@ -25,6 +25,7 @@ export async function loadLibrary(base = import.meta.env.BASE_URL): Promise<Medi
       id: entry.id,
       kind: isVideo ? 'video' : 'photo',
       src: `${base}${entry.file}`,
+      thumb: entry.thumb ? `${base}${entry.thumb}` : undefined,
       w: entry.w,
       h: entry.h,
       bytes: entry.bytes,
@@ -41,6 +42,7 @@ export async function loadLibrary(base = import.meta.env.BASE_URL): Promise<Medi
       favorite: false,
       trashedAt: null,
       locked: false,
+      hidden: false,
       edits: emptyEdit(),
     };
   });

@@ -44,7 +44,7 @@ export function Sheet({ title, onClose, children, wide }: { title?: string; onCl
 export function Dialog({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   return (
     <div className="scrim center" onPointerDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="dialog" role="dialog" aria-modal="true">
+      <div className="dialog glass glass-strong" role="dialog" aria-modal="true">
         <h3>{title}</h3>
         {children}
       </div>
