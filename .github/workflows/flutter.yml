@@ -47,6 +47,21 @@ jobs:
       - name: Generate localizations (gen-l10n)
         run: flutter gen-l10n
 
+      # Debug aid: report the resolved photo_manager version and its actual
+      # API signatures as annotations (raw log downloads are unavailable in
+      # the development sandbox). Remove once the seam is finalized.
+      - name: Report plugin API
+        run: |
+          VER=$(awk '/^  photo_manager:/{f=1} f && /version:/{print $2; exit}' pubspec.lock | tr -d '"')
+          echo "::notice title=pm-version::$VER"
+          SRC="$HOME/.pub-cache/hosted/pub.dev/photo_manager-$VER"
+          if [ -d "$SRC" ]; then
+            grep -n "getPermissionState\|requestPermissionExtend" "$SRC/lib/photo_manager.dart" | head -10 | while IFS= read -r l; do echo "::notice title=pm-api::$l"; done
+            grep -rn "class .*Option" "$SRC/lib" --include=*.dart | head -10 | while IFS= read -r l; do echo "::notice title=pm-api::$l"; done
+            grep -n "size" "$SRC/lib/types/entity.dart" | head -12 | while IFS= read -r l; do echo "::notice title=pm-api::$l"; done
+            grep -n "titleAsync\|String? get title" "$SRC/lib/types/entity.dart" | head -6 | while IFS= read -r l; do echo "::notice title=pm-api::$l"; done
+          fi
+
       - name: Analyze
         run: |
           set +e

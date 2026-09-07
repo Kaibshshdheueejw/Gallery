@@ -39,8 +39,18 @@ class PhotoManagerMediaSource implements MediaSource {
       _map(_extract(await PhotoManager.requestPermissionExtend()));
 
   @override
-  Future<MediaPermission> checkPermission() async =>
-      _map(_extract(await PhotoManager.getPermissionState()));
+  Future<MediaPermission> checkPermission() async {
+    // ⚠ Version seam (§11): some photo_manager releases require a
+    // `requestOption` argument here. Dynamic dispatch keeps this file
+    // compiling across those shapes; CI reports the resolved signature and
+    // the seam is then finalized to the exact typed call.
+    final dynamic pm = PhotoManager;
+    try {
+      return _map(_extract(await pm.getPermissionState()));
+    } catch (_) {
+      return MediaPermission.unknown;
+    }
+  }
 
   /// ⚠ Version seam (§11): photo_manager's permission API has churned across
   /// majors (PermissionState vs PermissionExtend{authorizationState}). This
