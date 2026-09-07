@@ -49,6 +49,11 @@ class ThumbCache {
 
   /// Returns thumbnail bytes, hitting memory → disk → media source in order.
   /// Concurrent requests for the same key share one in-flight future.
+  ///
+  /// Implementation note: the in-flight future is Completer-backed rather
+  /// than `putIfAbsent(...).whenComplete(remove)` — self-removal chained on
+  /// the very future callers await deadlocks under fake-async test zones and
+  /// adds a needless microtask hop in production.
   final Map<String, Future<Uint8List?>> _inFlight = {};
 
   Future<Uint8List?> get(String itemId, {int width = 360, int height = 360}) {
@@ -59,10 +64,32 @@ class ThumbCache {
       _memory[key] = hit; // move to MRU end (true LRU ordering)
       return Future.value(hit.bytes);
     }
-    return _inFlight.putIfAbsent(
-      key,
-      () => _load(key, itemId, width, height).whenComplete(() => _inFlight.remove(key)),
-    );
+    final existing = _inFlight[key];
+    if (existing != null) return existing;
+
+    final completer = Completer<Uint8List?>();
+    _inFlight[key] = completer.future;
+    _runLoad(key, itemId, width, height, completer);
+    return completer.future;
+  }
+
+  Future<void> _runLoad(
+    String key,
+    String itemId,
+    int width,
+    int height,
+    Completer<Uint8List?> completer,
+  ) async {
+    try {
+      completer.complete(await _load(key, itemId, width, height));
+    } catch (error, stack) {
+      completer.completeError(error, stack);
+    } finally {
+      final mine = _inFlight[key];
+      if (mine != null && identical(mine, completer.future)) {
+        _inFlight.remove(key);
+      }
+    }
   }
 
   Future<Uint8List?> _load(String key, String itemId, int width, int height) async {
