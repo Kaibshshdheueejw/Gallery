@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:photo_manager/photo_manager.dart';
 
 import '../../core/haptics.dart';
 import '../../core/theme/glass_theme.dart';
@@ -16,6 +17,11 @@ import '../timeline/timeline_screen.dart';
 /// Root shell: the four primary destinations behind the floating glass
 /// capsule (§3). Tabs are kept alive in an IndexedStack so grid scroll
 /// position and lazy pages survive tab switches.
+///
+/// Gated behind a photo/video permission check — nothing in the tab
+/// content is built until PhotoManager confirms access, since the tabs
+/// call PhotoManager.getAssetPathList() directly and will otherwise just
+/// silently return zero results instead of prompting the user.
 class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
 
@@ -23,8 +29,9 @@ class HomeShell extends ConsumerStatefulWidget {
   ConsumerState<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends ConsumerState<HomeShell> {
+class _HomeShellState extends ConsumerState<HomeShell> with WidgetsBindingObserver {
   int _tab = 0;
+  PermissionState? _permission;
 
   static const _tabs = <Widget>[
     ForYouScreen(),
@@ -33,6 +40,33 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     SearchScreen(),
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _checkPermission();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Re-check when the app resumes — covers the case where the user
+    // granted access from system Settings and comes back to the app.
+    if (state == AppLifecycleState.resumed) {
+      _checkPermission();
+    }
+  }
+
+  Future<void> _checkPermission() async {
+    final ps = await PhotoManager.requestPermissionExtend();
+    if (mounted) setState(() => _permission = ps);
+  }
+
   void _onTab(int index) {
     setState(() => _tab = index);
   }
@@ -40,6 +74,21 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+
+    // Still checking on first launch.
+    if (_permission == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    // Denied, or not yet decided (e.g. Android "limited" state with no
+    // access at all). isAuth = full access. hasAccess also covers
+    // Android 14+ partial/user-selected access.
+    if (!_permission!.isAuth && !_permission!.hasAccess) {
+      return _PermissionRequiredScreen(onRetry: _checkPermission);
+    }
+
     return Scaffold(
       extendBody: true, // content flows under the floating capsule
       body: Stack(
@@ -104,6 +153,63 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Shown when photo/video permission has not been granted (or was denied).
+/// Explains why access is needed and offers a retry, falling back to the
+/// system app-settings screen for the case where Android will no longer
+/// show its own permission dialog after a prior denial.
+class _PermissionRequiredScreen extends StatelessWidget {
+  const _PermissionRequiredScreen({required this.onRetry});
+
+  final Future<void> Function() onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.photo_library_outlined,
+                size: 64,
+                color: scheme.primary,
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Gallery needs access to your photos and videos',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'All processing happens on your device. Nothing is '
+                'uploaded unless you turn on cloud backup in Settings.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+              ),
+              const SizedBox(height: 32),
+              FilledButton(
+                onPressed: onRetry,
+                child: const Text('Grant access'),
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () => PhotoManager.openSetting(),
+                child: const Text('Open app settings'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
