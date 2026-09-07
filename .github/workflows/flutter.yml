@@ -33,7 +33,7 @@ jobs:
 
       # Caches ~/.gradle (distribution, AGP, dependencies) between runs —
       # first build stays slow, subsequent builds drop several minutes.
-      - uses: actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v4
 
       - uses: subosito/flutter-action@v2
         with:
