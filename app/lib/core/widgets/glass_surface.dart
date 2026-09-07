@@ -40,17 +40,19 @@ class GlassSurface extends ConsumerWidget {
   });
 
   /// Convenience constructor for bars (app bar, nav): pill radius.
+  /// Specular/parallax default on but can be disabled for tiny surfaces
+  /// (e.g. sticky timeline headers) where the sheen would only cost frames.
   const GlassSurface.pill({
     super.key,
     required this.child,
     this.blur = GlassTokens.blurStrong,
     this.tintOverride,
+    this.border = true,
+    this.specular = true,
+    this.parallax = true,
     this.padding,
     this.onTap,
-  })  : radius = GlassTokens.radiusPill,
-        border = true,
-        specular = true,
-        parallax = true;
+  }) : radius = GlassTokens.radiusPill;
 
   final Widget child;
   final double radius;
