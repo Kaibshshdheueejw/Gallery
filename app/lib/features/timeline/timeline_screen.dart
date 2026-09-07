@@ -208,7 +208,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
               _scrollController.animateTo(
                 target,
                 duration: GlassTokens.durationSlow,
-                curve: Curves.easeOutCubicEmphasized,
+                curve: Curves.easeOutCubic,
               );
             },
           ),

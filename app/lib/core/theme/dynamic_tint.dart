@@ -25,7 +25,7 @@ abstract final class DynamicTint {
     }
   }
 
-  static Color dominantFromImage(img.Image image) {
+  static Color? dominantFromImage(img.Image image) {
     final counts = <int, int>{};
     for (final p in image) {
       final r = p.r.toInt(), g = p.g.toInt(), b = p.b.toInt();

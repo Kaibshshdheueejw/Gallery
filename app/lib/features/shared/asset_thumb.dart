@@ -79,7 +79,7 @@ class _AssetThumbState extends ConsumerState<AssetThumb> {
           if (bytes != null)
             FadeInImage(
               fadeInDuration: GlassTokens.durationFast,
-              fadeInCurve: Curves.easeOutCubicEmphasized,
+              fadeInCurve: Curves.easeOutCubic,
               placeholder: MemoryImage(kTransparentImage),
               image: MemoryImage(bytes),
               fit: widget.fit,

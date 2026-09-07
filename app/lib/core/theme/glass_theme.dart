@@ -159,7 +159,7 @@ class _SpringPageTransitionsBuilder extends PageTransitionsBuilder {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    final spring = CurvedAnimation(parent: animation, curve: Curves.easeOutCubicEmphasized);
+    final spring = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
     // EaseOutCubicEmphasized is the Material "expressive" curve; combined with
     // the spring simulation below for shared-axis moves it reads as springy
     // without overshoot on full-page routes (overshoot on page edges looks

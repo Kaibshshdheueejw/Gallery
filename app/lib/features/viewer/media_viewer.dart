@@ -142,7 +142,7 @@ class _MediaViewerState extends ConsumerState<MediaViewer> {
           AnimatedOpacity(
             opacity: _chromeVisible ? 1 : 0,
             duration: GlassTokens.durationBase,
-            curve: Curves.easeOutCubicEmphasized,
+            curve: Curves.easeOutCubic,
             child: SafeArea(
               child: Column(
                 children: [

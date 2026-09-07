@@ -35,22 +35,26 @@ class PhotoManagerMediaSource implements MediaSource {
   }
 
   @override
-  Future<MediaPermission> requestPermission() async {
-    final result = await PhotoManager.requestPermissionExtend(
-      option: const RequestOption(needMetadata: false),
-    );
-    return _map(result.authorizationState, result.hasAccess);
-  }
+  Future<MediaPermission> requestPermission() async =>
+      _map(_extract(await PhotoManager.requestPermissionExtend()));
 
   @override
-  Future<MediaPermission> checkPermission() async {
-    final result = await PhotoManager.getPermissionState(
-      requestOption: const RequestOption(needMetadata: false),
-    );
-    return _map(result, true);
+  Future<MediaPermission> checkPermission() async =>
+      _map(_extract(await PhotoManager.getPermissionState()));
+
+  /// ⚠ Version seam (§11): photo_manager's permission API has churned across
+  /// majors (PermissionState vs PermissionExtend{authorizationState}). This
+  /// extractor accepts either shape so upgrades touch only this file.
+  PermissionState _extract(dynamic value) {
+    if (value is PermissionState) return value;
+    try {
+      final state = value.authorizationState;
+      if (state is PermissionState) return state;
+    } catch (_) {}
+    return PermissionState.denied;
   }
 
-  MediaPermission _map(PermissionState state, bool hasAccess) => switch (state) {
+  MediaPermission _map(PermissionState state) => switch (state) {
         PermissionState.authorized => MediaPermission.full,
         PermissionState.limited => MediaPermission.limited,
         PermissionState.denied => MediaPermission.denied,
@@ -127,12 +131,24 @@ class PhotoManagerMediaSource implements MediaSource {
       modifiedAt: a.modifiedDateTime,
       width: a.width,
       height: a.height,
-      sizeBytes: (await a.size).toInt(),
+      sizeBytes: await _sizeOf(a),
       albumId: a.relativePath ?? 'all',
       albumName: _folderName(relativePath),
       duration: Duration(seconds: a.duration),
       relativePath: relativePath,
     );
+  }
+
+  /// ⚠ Version seam (§11): `AssetEntity.size` has been int-bytes in some
+  /// releases and a Size-like object in others; resolve defensively.
+  Future<int> _sizeOf(AssetEntity a) async {
+    try {
+      final dynamic s = await (a as dynamic).size;
+      if (s is int) return s;
+      return (s as dynamic).toInt() as int;
+    } catch (_) {
+      return 0; // Storage features re-derive sizes in Stage 3.
+    }
   }
 
   static String _folderName(String relativePath) {

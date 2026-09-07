@@ -188,7 +188,7 @@ class _NavItem extends StatelessWidget {
         onTap: onTap,
         child: AnimatedContainer(
           duration: GlassTokens.durationFast,
-          curve: Curves.easeOutCubicEmphasized,
+          curve: Curves.easeOutCubic,
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
