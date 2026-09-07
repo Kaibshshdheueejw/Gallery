@@ -1,4 +1,4 @@
-# 📸 NovaGallery
+# 📸 Gallery
 
 > A modern, feature-rich media gallery app for Android & iOS — built with Flutter. Inspired by Samsung Gallery, reimagined with smarter organization, on-device AI, and a cleaner, more fluid UI.
 
@@ -12,7 +12,7 @@
 
 ## ✨ Overview
 
-**NovaGallery** is a next-generation photo & video gallery app. It goes beyond simple browsing by adding on-device intelligence (face grouping, object/scene detection, smart search), a highly customizable UI, and privacy-first design — all without shipping your media off-device unless you explicitly enable cloud backup.
+**Gallery** is a next-generation photo & video gallery app. It goes beyond simple browsing by adding on-device intelligence (face grouping, object/scene detection, smart search), a highly customizable UI, and privacy-first design — all without shipping your media off-device unless you explicitly enable cloud backup.
 
 ---
 
