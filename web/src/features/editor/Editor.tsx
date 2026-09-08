@@ -337,6 +337,10 @@ export function Editor() {
     setHistory([fresh]);
     setHIdx(0);
     setSelected(null);
+    setTool(item.kind === 'video' ? 'trim' : 'filters');
+    setVPlaying(true);
+    setVTime(0);
+    setVScrub(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item?.id]);
 
