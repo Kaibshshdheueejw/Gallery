@@ -63,6 +63,9 @@ class _GlassPopupRoute extends PopupRoute<void> {
   @override
   Duration get transitionDuration => const Duration(milliseconds: 1);
 
+  // ModalRoute's default transitionsBuilder returns the child unchanged —
+  // the popup animates itself internally (scale/fade/slide), so no
+  // route-level transition is needed.
   @override
   Widget buildPage(
     BuildContext context,
@@ -71,15 +74,6 @@ class _GlassPopupRoute extends PopupRoute<void> {
   ) {
     return _GlassPopup(anchorRect: anchorRect, items: items);
   }
-
-  @override
-  Widget buildTransitions(
-    BuildContext context,
-    Animation<double> animation,
-    Alignment? alignment,
-    Widget child,
-  ) =>
-      child;
 }
 
 class _GlassPopup extends StatefulWidget {

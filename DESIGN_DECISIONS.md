@@ -205,3 +205,37 @@ one assumes the original plugin is viable.
   grid entrance stagger is capped at the first 24 cells; nav icons replay keyframes by
   remounting a small SVG subtree (compositor-only transforms); selection uses a 260 ms pop.
   Thousands of items are never animated.
+
+## 14. Flutter app — permissions, memories & menu parity (post-web-corrections)
+
+- **Single permission flow.** `HomeShell` no longer owns a private gate: tabs are wrapped
+  in the shared `PermissionGate`/`PermissionFlow`. The user-gate intent is preserved
+  (nothing in the tab stack is built until access is confirmed), but the system prompt now
+  only fires from the localized rationale screen — never on cold start (`initState` did
+  previously call `requestPermissionExtend()` directly, which also shipped hardcoded
+  English strings, violating the l10n rule). App-resume does a **silent**
+  `getPermissionState` re-check so granting access in system Settings and returning to the
+  app unlocks the UI without a prompt.
+- **Limited access (iOS 14+, Android 14+ partial grant).** The gate shows a persistent
+  banner; its action calls `PermissionFlow.pickMore()` → `PhotoManager.presentLimited()`,
+  the official photo_manager 3.x API for the limited-library picker (iOS) / system photo
+  picker (Android 14+), then re-reads state and invalidates the repository caches.
+  Manifest/plist permissions were audited and are correct (READ_MEDIA_*,
+  VISUAL_USER_SELECTED, maxSdk-32 fallback, NSPhotoLibrary*/FaceID usage strings).
+- **Memories structure mirrors the corrected web app**: memories are *not* on For You.
+  A dedicated `MemoriesScreen` is reached from the hamburger menu (Timeline tab and
+  globally). `Memory`/`MemoryEngine` moved to `domain/usecases/memory_engine.dart`;
+  new pure `dayMemories()` derives day clusters (≥4 items, 30–365 days back, newest
+  first, capped 24) — the recent 30-day window belongs to the "recent highlight" so the
+  Memories screen never duplicates a day. All derivations run on real device dates;
+  scope note stays honest: the engine scans repository-cached pages (≤8 ≈ 960 items)
+  until the indexed DB stage.
+- **For You = discovery rails**: On this day, Recent highlight (featured), Recently added
+  (newest 20 → viewer). Empty library renders the honest empty state, not fake content.
+- **GlassPopupMenu** (`core/widgets/glass_popup_menu.dart`) replicates the web menu:
+  anchored to the trigger rect (flips above when there is no room), scale 0.92→1 + fade +
+  slight slide, 180 ms ease-out, dim barrier, back-gesture dismissal (transparent
+  `PopupRoute`). Item states: checked (radio-style), hint caption, disabled, danger.
+  The top-right gear became a hamburger; menu = Settings first, Memories, and on
+  Timeline: Group Day/Month/Year (persisted `timelineGrouping`, wired into
+  `GroupTimeline`) + Zoom in/out (existing grid-density setting, clamped 2–8).
