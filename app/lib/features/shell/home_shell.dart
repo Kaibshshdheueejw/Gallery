@@ -171,21 +171,21 @@ class _HomeShellState extends ConsumerState<HomeShell>
                           children: [if (currentChild != null) currentChild],
                         ),
                     transitionBuilder: (child, animation) {
-                      final a = CurvedAnimation(
-                        parent: animation,
-                        curve: kSpring,
-                      );
-                      // One spring drives opacity + transform (CSS
-                      // animation semantics); CSS clamps opacity >1
-                      // implicitly, so clamp here too.
+                      // NB: AnimatedSwitcher already wraps this animation
+                      // with switchInCurve (kSpring) — applying a second
+                      // CurvedAnimation would feed the spring's overshoot
+                      // (>1) back into Cubic.transform and trip its
+                      // [0,1] input assert. One spring drives opacity +
+                      // transform (CSS animation semantics); CSS clamps
+                      // opacity implicitly, so clamp here.
                       return AnimatedBuilder(
-                        animation: a,
+                        animation: animation,
                         builder: (context, c) => Opacity(
-                          opacity: a.value.clamp(0.0, 1.0),
+                          opacity: animation.value.clamp(0.0, 1.0),
                           child: Transform.translate(
-                            offset: Offset(0, 10 * (1 - a.value)),
+                            offset: Offset(0, 10 * (1 - animation.value)),
                             child: Transform.scale(
-                              scale: 0.975 + 0.025 * a.value,
+                              scale: 0.975 + 0.025 * animation.value,
                               child: c,
                             ),
                           ),
