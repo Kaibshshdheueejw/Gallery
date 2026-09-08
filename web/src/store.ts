@@ -20,6 +20,7 @@ export type Route =
   | { name: 'album'; album: AlbumRef }
   | { name: 'trash' }
   | { name: 'locked' }
+  | { name: 'memories' }
   | { name: 'settings'; page?: SettingsPage }
   | { name: 'storage' };
 

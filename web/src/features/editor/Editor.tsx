@@ -1398,7 +1398,7 @@ export function Editor() {
             </div>
             <p className="hint">
               Extract frame saves the current canvas (effects, stickers & text included) as a photo in your library.
-              Export WebM re-renders your exact recipe in real time via MediaRecorder — trim, speed, reverse, effects, overlays and aspect all bake in. Audio export is not included in the web preview.
+              Export WebM re-renders your exact recipe in real time via MediaRecorder — trim, speed, reverse, effects, overlays and aspect all bake in. Audio export is not included in this build.
             </p>
           </div>
         )}

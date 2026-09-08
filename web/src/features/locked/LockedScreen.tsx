@@ -67,7 +67,7 @@ export function LockGate({ onUnlock, title }: { onUnlock: () => void; title?: st
                 )
               ))}
             </div>
-            <p className="hint">Demo PIN: {settings.pin}</p>
+            <p className="hint">Default PIN: {settings.pin} — change it in Settings → Privacy & Security.</p>
             {settings.biometrics && (
               <button type="button" className="text-btn" onClick={() => { setUsePin(false); setPinEntry(''); }}>← {t('unlock_biometric')}</button>
             )}

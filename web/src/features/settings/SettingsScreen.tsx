@@ -211,7 +211,7 @@ export function SettingsScreen({ page }: { page: SettingsPage }) {
               </div>
             </SettingsSection>
             <SettingsSection title="For You sections" footnote="Control which discovery rails appear on the For You tab.">
-              <SettingsRow icon="memories" title="Memories" right={<AnimatedToggle label="Memories" checked={settings.foryou.memories} onChange={(v) => setSettings({ foryou: { ...settings.foryou, memories: v } })} />} />
+              <SettingsRow icon="memories" title="Memories" desc="Dedicated screen from the Timeline menu" right={<AnimatedToggle label="Memories" checked={settings.foryou.memories} onChange={(v) => setSettings({ foryou: { ...settings.foryou, memories: v } })} />} />
               <SettingsRow icon="story" title="Stories" right={<AnimatedToggle label="Stories" checked={settings.foryou.stories} onChange={(v) => setSettings({ foryou: { ...settings.foryou, stories: v } })} />} />
               <SettingsRow icon="clock" title="On this day" right={<AnimatedToggle label="On this day" checked={settings.foryou.onThisDay} onChange={(v) => setSettings({ foryou: { ...settings.foryou, onThisDay: v } })} />} />
               <SettingsRow icon="image" title="Recently added" right={<AnimatedToggle label="Recently" checked={settings.foryou.recently} onChange={(v) => setSettings({ foryou: { ...settings.foryou, recently: v } })} />} />
@@ -433,7 +433,7 @@ export function SettingsScreen({ page }: { page: SettingsPage }) {
         {page === 'notifications' && (
           <div className="set-list">
             <div className="set-page-title"><h2>{t('set_notifications')}</h2><p>{t('set_notifications_d')}</p></div>
-            <SettingsSection title="Suggestions" footnote="In this web preview preferences are stored and applied in-app (For You cards); system push notifications require the on-device build.">
+            <SettingsSection title="Suggestions" footnote="Preferences are stored and applied in-app (For You cards). System push notifications arrive with the device build.">
               <SettingsRow icon="memories" title="Memories" desc="Resurface trips & events" right={<AnimatedToggle label="Memories" checked={settings.notifications.memories} onChange={(v) => setSettings({ notifications: { ...settings.notifications, memories: v } })} />} />
               <SettingsRow icon="broom" title="Cleanup suggestions" desc="Duplicates, blurry & large files" right={<AnimatedToggle label="Cleanup" checked={settings.notifications.cleanup} onChange={(v) => setSettings({ notifications: { ...settings.notifications, cleanup: v } })} />} />
               <SettingsRow icon="cloud" title="Backup reminders" desc="When the vault is stale" right={<AnimatedToggle label="Backup" checked={settings.notifications.backup} onChange={(v) => setSettings({ notifications: { ...settings.notifications, backup: v } })} />} />
@@ -459,11 +459,11 @@ export function SettingsScreen({ page }: { page: SettingsPage }) {
         {page === 'permissions' && (
           <div className="set-list">
             <div className="set-page-title"><h2>{t('set_permissions')}</h2><p>{t('set_permissions_d')}</p></div>
-            <SettingsSection title="Granted" footnote="The web preview reads a bundled sample library instead of your device media.">
-              <SettingsRow icon="image" title="Photos & videos" desc="Bundled sample library (read-only)" right={<span className="chip static">Granted</span>} />
+            <SettingsSection title="Granted" footnote="The phone app requests runtime permissions for your real photo library; this build reads its bundled sample library.">
+              <SettingsRow icon="image" title="Photos & videos" desc="Media library access" right={<span className="chip static">Granted</span>} />
               <SettingsRow icon="mapPin" title="Location" desc="Read from embedded EXIF only" right={<span className="chip static">Embedded</span>} />
               <SettingsRow icon="fingerprint" title="Biometrics" desc={settings.biometrics ? 'Available for Locked folder' : 'Disabled'} right={<span className="chip static">{settings.biometrics ? 'On' : 'Off'}</span>} />
-              <SettingsRow icon="bell" title="Notifications" desc="Not requested in the web preview" right={<span className="chip static">None</span>} />
+              <SettingsRow icon="bell" title="Notifications" desc="Not requested yet" right={<span className="chip static">None</span>} />
             </SettingsSection>
             <div className="scroll-pad" />
           </div>
@@ -473,11 +473,9 @@ export function SettingsScreen({ page }: { page: SettingsPage }) {
           <div className="set-list">
             <div className="set-page-title"><h2>{t('set_about')}</h2><p>{t('set_about_d')}</p></div>
             <SettingsSection>
-              <SettingsRow icon="sparkle" title={t('app_name')} desc="Version 1.0 · web preview" />
-              <SettingsRow icon="layers" title="Branch" desc="arena/01a07b15-gallery" />
-              <SettingsRow icon="shield" title="Licence" desc="MIT" />
-              <SettingsRow icon="image" title="Sample media attribution" desc="Stock thumbnails & synthetic screenshots" onClick={() => setAttribOpen(true)} />
-              <SettingsRow icon="restore" title="Reset demo data" desc="Restore the factory library & settings" onClick={resetAll} />
+              <SettingsRow icon="sparkle" title={t('app_name')} desc="Version 1.0" />
+              <SettingsRow icon="image" title="Sample media attribution" desc="Bundled library credits" onClick={() => setAttribOpen(true)} />
+              <SettingsRow icon="restore" title="Reset Gallery" desc="Restore default settings and clear all in-app changes" onClick={resetAll} />
             </SettingsSection>
             <div className="scroll-pad" />
           </div>
@@ -499,7 +497,7 @@ export function SettingsScreen({ page }: { page: SettingsPage }) {
       {attribOpen && (
         <Sheet title="Sample media" onClose={() => setAttribOpen(false)}>
           <p className="hint">
-            The demo library is generated from low-resolution search thumbnails (Pexels, Unsplash, Vecteezy and
+            The bundled sample library is generated from low-resolution search thumbnails (Pexels, Unsplash, Vecteezy and
             stock-agency previews) saved under <code>image-search/</code>, downscaled to ≤1000 px. Screenshots are
             synthetic SVG mocks. See <code>web/public/media/ATTRIBUTION.md</code>. Replace with licensed assets or the
             user's own media before shipping.

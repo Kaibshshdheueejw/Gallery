@@ -116,6 +116,7 @@ export function TimelineScreen() {
 
   const menuItems = [
     { icon: 'settings', label: t('settings'), onClick: () => navigate({ name: 'settings' }) },
+    ...(settings.foryou.memories ? [{ icon: 'memories', label: t('memories'), onClick: () => navigate({ name: 'memories' }) }] : []),
     { icon: 'check', label: 'Select items', onClick: () => selection.enter() },
     { icon: 'sort', label: 'Newest first', checked: settings.sortOrder === 'newest', onClick: () => setSettings({ sortOrder: 'newest' }) },
     { icon: 'sort', label: 'Oldest first', checked: settings.sortOrder === 'oldest', onClick: () => setSettings({ sortOrder: 'oldest' }) },
@@ -141,7 +142,7 @@ export function TimelineScreen() {
       </header>
 
       {items.length === 0 ? (
-        <EmptyState icon="image" title={t('empty_album')} hint="Delete something to see it in the Recycle bin, or reset the demo data in Settings." />
+        <EmptyState icon="image" title={t('empty_album')} hint="Delete something to see it in the Recycle bin, or reset Gallery in Settings → About." />
       ) : (
         <div
           className="scroll-area"

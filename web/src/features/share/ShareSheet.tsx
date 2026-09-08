@@ -86,7 +86,7 @@ export function ShareSheet() {
           ['bluetooth', 'Bluetooth'],
           ['copy', 'Copy name'],
         ] as const).map(([icon, label]) => (
-          <button key={label} type="button" className="target" onClick={() => { toast(`${label}: demo target`); closeShare(); }}>
+          <button key={label} type="button" className="target" onClick={() => { toast(`${label}: sharing opens with the system sheet on device`); closeShare(); }}>
             <span><Icon name={icon} size={20} /></span>
             {label}
           </button>

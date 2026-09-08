@@ -15,6 +15,7 @@ import { Viewer } from './features/viewer/Viewer';
 import { Editor } from './features/editor/Editor';
 import { SettingsScreen } from './features/settings/SettingsScreen';
 import { StorageScreen } from './features/storage/StorageScreen';
+import { MemoriesScreen } from './features/memories/MemoriesScreen';
 import { TrashScreen } from './features/trash/TrashScreen';
 import { LockedScreen, LockGate } from './features/locked/LockedScreen';
 import { ShareSheet } from './features/share/ShareSheet';
@@ -91,6 +92,7 @@ export function App() {
     case 'album': body = <AlbumDetailScreen key={app.route.album.type + app.route.album.id} album={app.route.album} />; break;
     case 'settings': body = <SettingsScreen key={app.route.page ?? 'main'} page={(app.route.page ?? 'main') as SettingsPage} />; break;
     case 'storage': body = <StorageScreen />; break;
+    case 'memories': body = <MemoriesScreen />; break;
     case 'trash': body = <TrashScreen />; break;
     case 'locked': body = <LockedScreen />; break;
     default:
@@ -118,25 +120,7 @@ export function App() {
           <strong>{t('app_name')}</strong>
         </div>
       )}
-      <DevHint />
     </div>
   );
 }
 
-function DevHint() {
-  const [open, setOpen] = useState(false);
-  return (
-    <button type="button" className={`dev-hint glass glass-strong${open ? ' open' : ''}`} onClick={() => setOpen((o) => !o)} title="About this preview">
-      <Icon name="info" size={16} />
-      {open && (
-        <span>
-          Web test build of the Gallery spec (README.md). Try: the hamburger menu on every tab,
-          pinch / Ctrl-scroll the Timeline grid, long-press to multi-select → Collage, search
-          “sunset beach photos from July”, edit a photo (curves, HSL, stickers, text, retouch),
-          swipe a playing video — left half brightness, right half volume, across to seek —
-          lock items (PIN 1234), and explore Settings → Storage & Cleanup.
-        </span>
-      )}
-    </button>
-  );
-}

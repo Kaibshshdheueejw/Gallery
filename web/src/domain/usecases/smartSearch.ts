@@ -2,7 +2,7 @@
  * Natural-language smart search.
  * Parses a free-text query into intents (dates, people, places, media types,
  * objects/scenes, OCR text) and intersects them over the visible library —
- * e.g. "sunset beach photos from July", "receipts with invoice", "Meera 2026".
+ * e.g. "sunset beach photos from July", "receipts with invoice", "Sofia 2026".
  */
 import type { MediaItem } from '../../data/models';
 import { isVisible } from './library';
@@ -48,7 +48,7 @@ const TYPE_WORDS: Record<string, (i: MediaItem) => boolean> = {
 };
 
 const SYNONYMS: Record<string, string[]> = {
-  beach: ['beach', 'sea', 'ocean', 'sand', 'goa'],
+  beach: ['beach', 'sea', 'ocean', 'sand', 'bali'],
   sea: ['beach', 'sea', 'ocean'],
   ocean: ['beach', 'sea', 'ocean'],
   sunset: ['sunset', 'sunrise', 'dusk'],
@@ -56,12 +56,11 @@ const SYNONYMS: Record<string, string[]> = {
   cat: ['cat', 'kitten', 'pet'],
   pet: ['pet', 'dog', 'cat'],
   flower: ['flower', 'garden', 'macro', 'blossom'],
-  food: ['food', 'curry', 'thali', 'dish', 'eat'],
-  curry: ['curry', 'thali', 'food'],
+  food: ['food', 'street food', 'dish', 'eat', 'restaurant'],
   city: ['city', 'urban', 'street'],
   night: ['night', 'dark', 'lights'],
-  diwali: ['diwali', 'festival', 'diya'],
-  festival: ['festival', 'diwali', 'diya'],
+  lantern: ['lantern', 'festival', 'lights'],
+  festival: ['festival', 'lantern', 'lights'],
   waterfall: ['waterfall', 'falls', 'forest'],
   forest: ['forest', 'waterfall', 'green', 'jungle'],
   mountain: ['mountain', 'lake', 'trek', 'peak', 'hill'],
@@ -218,9 +217,9 @@ export const EXAMPLE_QUERIES = [
   'sunset beach photos from July',
   'receipts with invoice',
   'blurry photos',
-  'friends in Kolkata',
-  'Meera 2026',
-  'diwali videos',
+  'friends in Barcelona',
+  'Sofia 2026',
+  'festival videos',
   'screenshots this month',
   'waterfall last year',
 ];

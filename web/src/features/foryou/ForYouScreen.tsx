@@ -6,7 +6,8 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { navigate, openViewer, requestSearch, requestSelect, rescanLibrary, setTab, useApp } from '../../store';
-import { events, faceClusters, memories, onThisDay, visibleItems } from '../../domain/usecases/library';
+import { events, faceClusters, onThisDay, visibleItems } from '../../domain/usecases/library';
+import { MemorySlideshow } from '../memories/MemorySlideshow';
 import { Thumb } from '../../components/PhotoGrid';
 import { ScreenMenu } from '../../components/ScreenMenu';
 import { ProgressBar, SectionTitle } from '../../components/ui';
@@ -14,42 +15,6 @@ import { Icon } from '../../core/icons';
 import { translate } from '../../core/i18n';
 import { formatMonthYear, relativeTime } from '../../core/utils';
 import type { MediaItem } from '../../data/models';
-
-function MemorySlideshow({ items, onClose }: { items: MediaItem[]; onClose: () => void }) {
-  const [index, setIndex] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setIndex((i) => (i + 1) % items.length), 2600);
-    return () => clearInterval(id);
-  }, [items.length]);
-  useEffect(() => {
-    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', key);
-    return () => window.removeEventListener('keydown', key);
-  }, [onClose]);
-  return (
-    <div className="slideshow" onPointerDown={onClose}>
-      {items.map((item, i) => (
-        <div key={item.id} className={`slide${i === index ? ' on' : ''}`}>
-          <img src={item.src} alt={item.title} />
-        </div>
-      ))}
-      <div className="slide-hud">
-        <strong>{items[0]?.event ?? 'Memory'}</strong>
-        <span>{formatMonthYear(items[0]?.takenAt ?? Date.now())} · {index + 1}/{items.length}</span>
-        <ProgressBar value={(index + 1) / items.length} />
-      </div>
-    </div>
-  );
-}
-
-/** intelligent aspect: landscape → 16/10, portrait → 4/5, else 1/1 */
-function memAspect(item: MediaItem | undefined): string {
-  if (!item) return '16 / 10';
-  const ar = item.w / item.h;
-  if (ar > 1.15) return '16 / 10';
-  if (ar < 0.9) return '4 / 5';
-  return '1 / 1';
-}
 
 /** honest, statistics-only "featured" score: sharp + well-exposed + interesting metadata */
 function featureScore(i: MediaItem): number {
@@ -69,7 +34,6 @@ export function ForYouScreen() {
   const fy = settings.foryou;
 
   const vis = useMemo(() => visibleItems(items), [items]);
-  const mems = useMemo(() => memories(items), [items]);
   const otd = useMemo(() => onThisDay(items), [items]);
   const stories = useMemo(() => {
     const cutoff = Date.now() - 21 * 86_400_000;
@@ -162,43 +126,6 @@ export function ForYouScreen() {
                   <strong>{s.id}</strong>
                   <em>{s.items.length} items · {relativeTime(s.items[0].takenAt)}</em>
                 </button>
-              ))}
-            </div>
-          </>
-        )}
-
-        {fy.memories && settings.notifications.memories && mems.length > 0 && (
-          <>
-            <SectionTitle>{t('memories')}</SectionTitle>
-            <div className="mem-rail">
-              {mems.map((m) => (
-                <div
-                  key={m.id}
-                  role="button"
-                  tabIndex={0}
-                  className="mem-card pressable"
-                  style={{ aspectRatio: memAspect(m.items[0]) }}
-                  onClick={() => openViewer(m.items.map((i) => i.id), 0)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') openViewer(m.items.map((i) => i.id), 0); }}
-                >
-                  <span className="mem-media">{m.items[0] && <img src={m.items[0].src} alt={m.id} loading="lazy" decoding="async" />}</span>
-                  <span className="mem-scrim" />
-                  <span className="mem-badge">{t('memories')}</span>
-                  <span className="mem-glass">
-                    <span className="mem-txt">
-                      <strong>{m.id}</strong>
-                      <em>{formatMonthYear(m.at)} · {m.items.length} items · {relativeTime(m.at)}</em>
-                    </span>
-                    <button
-                      type="button"
-                      className="mem-play"
-                      aria-label="Play memory"
-                      onClick={(e) => { e.stopPropagation(); setPlaying(m.items); }}
-                    >
-                      <Icon name="play" size={14} filled />
-                    </button>
-                  </span>
-                </div>
               ))}
             </div>
           </>

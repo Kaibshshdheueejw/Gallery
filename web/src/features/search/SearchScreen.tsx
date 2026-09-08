@@ -93,7 +93,7 @@ export function SearchScreen() {
             )}
             <SectionTitle>Things &amp; text</SectionTitle>
             <div className="chip-row">
-              {['sunset', 'beach', 'food', 'cat', 'dog', 'flower', 'waterfall', 'night', 'diwali', 'invoice', 'blurry', 'duplicate', 'screenshot'].map((tag) => (
+              {['sunset', 'beach', 'food', 'cat', 'dog', 'flower', 'waterfall', 'night', 'lantern', 'invoice', 'blurry', 'duplicate', 'screenshot'].map((tag) => (
                 <Chip key={tag} icon="tag" label={tag} onClick={() => append(tag)} />
               ))}
             </div>
