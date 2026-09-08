@@ -35,8 +35,9 @@ void main() {
     );
     await tester.pumpAndSettle(const Duration(milliseconds: 100), EnginePhase.sendSemanticsUpdate, const Duration(seconds: 20));
 
-    // Floating capsule nav labels (en locale in tests).
-    expect(find.text('For you'), findsOneWidget);
+    // Floating capsule nav labels (en locale in tests). "For you" appears
+    // twice: the nav label plus the For You screen's own title.
+    expect(find.text('For you'), findsNWidgets(2));
     expect(find.text('Timeline'), findsOneWidget);
     expect(find.text('Albums'), findsOneWidget);
     expect(find.text('Search'), findsOneWidget);

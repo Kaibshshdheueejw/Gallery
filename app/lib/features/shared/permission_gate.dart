@@ -28,6 +28,17 @@ class PermissionFlow extends Notifier<MediaPermission> {
     state = await ref.read(mediaRepositoryProvider).checkPermission();
   }
 
+  /// "Select more" on partial grants: iOS 14+ limited-library picker,
+  /// Android 14+ system photo picker (photo_manager `presentLimited`).
+  /// ⚠ Version seam (§11): presentLimited exists in photo_manager 3.x.
+  Future<void> pickMore() async {
+    await PhotoManager.presentLimited(type: RequestType.common);
+    state = await ref.read(mediaRepositoryProvider).checkPermission();
+    if (state == MediaPermission.full || state == MediaPermission.limited) {
+      ref.read(mediaRepositoryProvider).invalidate();
+    }
+  }
+
   Future<void> openSystemSettings() => PhotoManager.openSetting();
 }
 
@@ -209,8 +220,8 @@ class _LimitedBanner extends ConsumerWidget {
                 ),
               ),
               TextButton(
-                onPressed: () => ref.read(permissionProvider.notifier).request(),
-                child: Text(l10n.actionRetry),
+                onPressed: () => ref.read(permissionProvider.notifier).pickMore(),
+                child: Text(l10n.permissionSelectMore),
               ),
             ],
           ),

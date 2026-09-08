@@ -71,5 +71,12 @@
   "settingsPerfAuto": "स्वचालित",
   "settingsPerfOff": "बंद",
   "settingsPerfOn": "चालू",
-  "settingsPerfAutoLowTier": "Auto: निम्न-श्रेणी डिवाइस पहचाना गया — स्क्रॉलिंग सुचारु रखने के लिए ग्लास ब्लर बंद कर दिया गया है।"
+  "settingsPerfAutoLowTier": "Auto: निम्न-श्रेणी डिवाइस पहचाना गया — स्क्रॉलिंग सुचारु रखने के लिए ग्लास ब्लर बंद कर दिया गया है।",
+  "permissionSelectMore": "और फ़ोटो चुनें",
+  "timelineGroupDay": "दिन",
+  "timelineGroupMonth": "महीना",
+  "timelineGroupYear": "वर्ष",
+  "timelineZoomIn": "ज़ूम इन",
+  "timelineZoomOut": "ज़ूम आउट",
+  "forYouRecentlyAdded": "हाल ही में जोड़े गए"
 }

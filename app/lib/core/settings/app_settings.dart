@@ -24,6 +24,9 @@ class AppSettings {
     this.parallaxEnabled = true,
     this.hapticsEnabled = true,
     this.gridColumns = 4,
+    /// TimelineGrouping enum index (0=day, 1=month, 2=year). Stored as an
+    /// int so the settings layer stays free of domain imports.
+    this.timelineGrouping = 0,
     this.localeOverride = null, // null = follow system locale (§7)
     this.seedColor = null, // null = brand seed; set by dynamic tint (Stage 2)
   });
@@ -34,6 +37,7 @@ class AppSettings {
   final bool parallaxEnabled;
   final bool hapticsEnabled;
   final int gridColumns;
+  final int timelineGrouping;
   final Locale? localeOverride;
   final Color? seedColor;
 
@@ -49,6 +53,7 @@ class AppSettings {
     bool? parallaxEnabled,
     bool? hapticsEnabled,
     int? gridColumns,
+    int? timelineGrouping,
     Locale? localeOverride,
     bool clearLocale = false,
     Color? seedColor,
@@ -61,6 +66,7 @@ class AppSettings {
         parallaxEnabled: parallaxEnabled ?? this.parallaxEnabled,
         hapticsEnabled: hapticsEnabled ?? this.hapticsEnabled,
         gridColumns: gridColumns ?? this.gridColumns,
+        timelineGrouping: timelineGrouping ?? this.timelineGrouping,
         localeOverride: clearLocale ? null : (localeOverride ?? this.localeOverride),
         seedColor: clearSeed ? null : (seedColor ?? this.seedColor),
       );
@@ -72,6 +78,7 @@ class SettingsController extends Notifier<AppSettings> {
   static const _kParallax = '${AppConstants.prefsKeyPrefix}parallax';
   static const _kHaptics = '${AppConstants.prefsKeyPrefix}haptics';
   static const _kColumns = '${AppConstants.prefsKeyPrefix}columns';
+  static const _kGrouping = '${AppConstants.prefsKeyPrefix}grouping';
   static const _kLocale = '${AppConstants.prefsKeyPrefix}locale';
 
   SharedPreferences? _prefs;
@@ -93,6 +100,7 @@ class SettingsController extends Notifier<AppSettings> {
       parallaxEnabled: prefs.getBool(_kParallax) ?? true,
       hapticsEnabled: prefs.getBool(_kHaptics) ?? true,
       gridColumns: prefs.getInt(_kColumns) ?? 4,
+      timelineGrouping: (prefs.getInt(_kGrouping) ?? 0).clamp(0, 2),
       localeOverride: localeTag == null ? null : Locale(localeTag),
     );
   }
@@ -105,6 +113,7 @@ class SettingsController extends Notifier<AppSettings> {
     await prefs.setBool(_kParallax, state.parallaxEnabled);
     await prefs.setBool(_kHaptics, state.hapticsEnabled);
     await prefs.setInt(_kColumns, state.gridColumns);
+    await prefs.setInt(_kGrouping, state.timelineGrouping);
     final tag = state.localeOverride?.languageCode;
     if (tag == null) {
       await prefs.remove(_kLocale);
@@ -141,6 +150,11 @@ class SettingsController extends Notifier<AppSettings> {
 
   void setGridColumns(int columns) {
     state = state.copyWith(gridColumns: columns.clamp(2, 8));
+    _persist();
+  }
+
+  void setTimelineGrouping(int index) {
+    state = state.copyWith(timelineGrouping: index.clamp(0, 2));
     _persist();
   }
 

@@ -71,5 +71,12 @@
   "settingsPerfAuto": "Automático",
   "settingsPerfOff": "Desactivado",
   "settingsPerfOn": "Activado",
-  "settingsPerfAutoLowTier": "Auto: dispositivo de gama baja detectado — el desenfoque del cristal se desactiva para mantener un desplazamiento fluido."
+  "settingsPerfAutoLowTier": "Auto: dispositivo de gama baja detectado — el desenfoque del cristal se desactiva para mantener un desplazamiento fluido.",
+  "permissionSelectMore": "Seleccionar más fotos",
+  "timelineGroupDay": "Día",
+  "timelineGroupMonth": "Mes",
+  "timelineGroupYear": "Año",
+  "timelineZoomIn": "Acercar",
+  "timelineZoomOut": "Alejar",
+  "forYouRecentlyAdded": "Añadidos recientemente"
 }

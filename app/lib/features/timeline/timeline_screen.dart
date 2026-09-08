@@ -107,9 +107,11 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
 
     final settings = ref.watch(settingsProvider);
     final locale = Localizations.localeOf(context).toString();
+    final grouping =
+        TimelineGrouping.values[settings.timelineGrouping.clamp(0, 2)];
     final sections = GroupTimeline.call(
       _items,
-      grouping: TimelineGrouping.day,
+      grouping: grouping,
       locale: locale,
     );
     final indexOf = <String, int>{

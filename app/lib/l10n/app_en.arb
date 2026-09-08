@@ -102,5 +102,12 @@
   "settingsPerfAuto": "Auto",
   "settingsPerfOff": "Off",
   "settingsPerfOn": "On",
-  "settingsPerfAutoLowTier": "Auto: low-tier device detected — glass blur is disabled to keep scrolling smooth."
+  "settingsPerfAutoLowTier": "Auto: low-tier device detected — glass blur is disabled to keep scrolling smooth.",
+  "permissionSelectMore": "Select more photos",
+  "timelineGroupDay": "Day",
+  "timelineGroupMonth": "Month",
+  "timelineGroupYear": "Year",
+  "timelineZoomIn": "Zoom in",
+  "timelineZoomOut": "Zoom out",
+  "forYouRecentlyAdded": "Recently added"
 }

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gallery_app/domain/models/media_item.dart';
-import 'package:gallery_app/features/foryou/foryou_screen.dart';
+import 'package:gallery_app/domain/usecases/memory_engine.dart';
 
 MediaItem item(String id, DateTime at, {int w = 1200, int h = 1600}) => MediaItem(
       id: id,
@@ -56,6 +56,30 @@ void main() {
     expect(run([]), isEmpty);
   });
 
+  test('day clusters: >= minItems within the year window, newest first', () {
+    final memories = engine.dayMemories(
+      [
+        item('c1', DateTime(2026, 7, 4, 9)),
+        item('c2', DateTime(2026, 7, 4, 10)),
+        item('c3', DateTime(2026, 7, 4, 11)),
+        item('c4', DateTime(2026, 7, 4, 12)),
+        item('small1', DateTime(2026, 6, 2, 9)),
+        item('small2', DateTime(2026, 6, 2, 10)),
+        item('recent', DateTime(2026, 9, 1, 9)), // inside 30d highlight window
+        item('recent2', DateTime(2026, 9, 1, 10)),
+        item('recent3', DateTime(2026, 9, 1, 11)),
+        item('recent4', DateTime(2026, 9, 1, 12)),
+        item('old', DateTime(2024, 5, 5, 9)), // outside the year window
+      ],
+      now,
+      dateLabel: (d) => d.toIso8601String().sliceDate(),
+    );
+    expect(memories.map((m) => m.title), ['2026-07-04']);
+    expect(memories.first.subtitle, isEmpty);
+    expect(memories.first.items.map((i) => i.id),
+        ['c4', 'c3', 'c2', 'c1']); // sorted newest-first inside the day
+  });
+
   test('intelligent aspect ratio by dominant orientation', () {
     final landscape = Memory(
       id: 'l',
@@ -76,4 +100,8 @@ void main() {
     ]);
     expect(mixed.aspectRatio, 1);
   });
+}
+
+extension on String {
+  String sliceDate() => substring(0, 10);
 }

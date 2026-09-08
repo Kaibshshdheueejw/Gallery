@@ -71,5 +71,12 @@
   "settingsPerfAuto": "স্বয়ংক্রিয়",
   "settingsPerfOff": "বন্ধ",
   "settingsPerfOn": "চালু",
-  "settingsPerfAutoLowTier": "Auto: নিম্ন-মানের ডিভাইস শনাক্ত হয়েছে — মসৃণ স্ক্রলিংয়ের জন্য গ্লাস ব্লার বন্ধ করা হয়েছে।"
+  "settingsPerfAutoLowTier": "Auto: নিম্ন-মানের ডিভাইস শনাক্ত হয়েছে — মসৃণ স্ক্রলিংয়ের জন্য গ্লাস ব্লার বন্ধ করা হয়েছে।",
+  "permissionSelectMore": "আরো ছবি নির্বাচন করুন",
+  "timelineGroupDay": "দিন",
+  "timelineGroupMonth": "মাস",
+  "timelineGroupYear": "বছর",
+  "timelineZoomIn": "জুম ইন",
+  "timelineZoomOut": "জুম আউট",
+  "forYouRecentlyAdded": "সম্প্রতি যোগ করা"
 }
