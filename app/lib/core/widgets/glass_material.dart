@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -20,12 +21,12 @@ enum GlassVariant { base, subtle, strong, raised }
 /// luminance-preserving scale used by CSS/SVG filters.
 ImageFilter _saturate(double f) {
   final r = 0.2126, g = 0.7152, b = 0.0722;
-  return ImageFilter.matrix(<double>[
+  return ImageFilter.matrix(Float64List.fromList(<double>[
     r + (1 - r) * f, g - g * f, b - b * f, 0, 0, //
     r - r * f, g + (1 - g) * f, b - b * f, 0, 0, //
     r - r * f, g - g * f, b + (1 - b) * f, 0, 0, //
     0, 0, 0, 1, 0, //
-  ]);
+  ]));
 }
 
 /// Liquid Glass surface. Blur is a single BackdropFilter (GPU-friendly) and

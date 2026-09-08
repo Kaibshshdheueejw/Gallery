@@ -140,7 +140,7 @@ class _ToastCardState extends ConsumerState<_ToastCard> {
                 style: TextStyle(
                   fontSize: 13.5,
                   fontWeight: FontWeight.w500, // ~550
-                  color: scheme.inverseOnSurface,
+                  color: scheme.onInverseSurface,
                 ),
               ),
             ),
