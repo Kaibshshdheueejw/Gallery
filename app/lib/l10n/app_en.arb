@@ -109,5 +109,9 @@
   "timelineGroupYear": "Year",
   "timelineZoomIn": "Zoom in",
   "timelineZoomOut": "Zoom out",
-  "forYouRecentlyAdded": "Recently added"
+  "forYouRecentlyAdded": "Recently added",
+  "sortNewest": "Newest first",
+  "sortOldest": "Oldest first",
+  "menuLabel": "Menu",
+  "backLabel": "Back"
 }

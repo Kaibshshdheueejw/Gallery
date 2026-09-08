@@ -15,7 +15,7 @@ class Pressable extends ConsumerStatefulWidget {
     required this.child,
     this.onTap,
     this.onLongPress,
-    this.scale = 0.96,
+    this.scale = 0.965,
     this.spring = GlassTokens.springSnappy,
     this.haptic = true,
   });

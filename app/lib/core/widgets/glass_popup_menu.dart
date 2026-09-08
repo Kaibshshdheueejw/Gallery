@@ -1,13 +1,18 @@
+import 'dart:math' as math;
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../design/tokens.dart';
 import '../haptics.dart';
-import '../theme/glass_theme.dart';
-import 'glass_surface.dart';
+import '../settings/app_settings.dart';
+import 'glass_material.dart';
+import 'svg_icon.dart';
 
-/// One entry in a [showGlassPopupMenu]. Mirrors the web GlassPopupMenu item
-/// model: icon + label, optional trailing check (radio-style choices),
-/// optional hint caption, disabled and destructive (danger) variants.
+/// One entry in a [showGlassPopupMenu] — mirrors the preview's
+/// PopupMenuItem model: svg icon name + label, optional trailing check
+/// (radio-style choices), optional hint caption, disabled and danger.
 class GlassPopupItem {
   const GlassPopupItem({
     required this.icon,
@@ -19,7 +24,8 @@ class GlassPopupItem {
     this.danger = false,
   });
 
-  final IconData icon;
+  /// Icon name from the generated preview icon set (assets/icons).
+  final String icon;
   final String label;
   final VoidCallback? onTap;
   final bool checked;
@@ -28,68 +34,79 @@ class GlassPopupItem {
   final bool danger;
 }
 
-/// Shows the anchored glass popup menu below (or above, when there is no
-/// room) [anchorRect] — the screen-coordinate rect of the trigger widget.
-///
-/// Animation matches the web menu: scale 0.92 → 1 with a slight upward
-/// slide and fade, ~180 ms ease-out; barrier tap dismisses. Rendered in a
-/// transparent [PopupRoute] so the system back gesture closes it.
+/// Shows the Liquid Glass popup menu anchored to [anchorRect] (the
+/// trigger's screen-coordinate rect). Exact port of the preview's
+/// GlassPopupMenu.tsx + .glass-popup CSS:
+///   • scrim rgba(8,6,18,0.28) with a 2px backdrop blur, 140ms fade-in
+///   • panel: glass-strong, min-width 230, max-width min(320, vw-24),
+///     radius 20, padding 7, rows gap 2, max-height min(70vh, 520)
+///   • popup-in: scale 0.82→1 + translateY(-8→0) + fade, hero duration,
+///     spring curve, transform-origin top right
+///   • positioned right-aligned under the trigger, flipped above when it
+///     would overflow (est = items*48 + 30, matching the preview)
+///   • outside tap / back gesture dismiss (transparent PopupRoute)
 Future<void> showGlassPopupMenu(
   BuildContext context, {
   required Rect anchorRect,
   required List<GlassPopupItem> items,
+  String? title,
 }) {
   return Navigator.of(context, rootNavigator: true).push(
-    _GlassPopupRoute(anchorRect: anchorRect, items: items),
+    _GlassPopupRoute(anchorRect: anchorRect, items: items, title: title),
   );
 }
 
 class _GlassPopupRoute extends PopupRoute<void> {
-  _GlassPopupRoute({required this.anchorRect, required this.items});
+  _GlassPopupRoute({
+    required this.anchorRect,
+    required this.items,
+    this.title,
+  });
 
   final Rect anchorRect;
   final List<GlassPopupItem> items;
+  final String? title;
 
+  // The page paints its own blurred scrim (the preview dims with
+  // rgba(8,6,18,0.28) + 2px blur); the route barrier stays transparent.
   @override
-  Color? get barrierColor => Colors.black.withValues(alpha: 0.12);
+  Color? get barrierColor => null;
 
   @override
   bool get barrierDismissible => true;
 
-  // null → platform default semantics; keeps §11 (no hardcoded strings).
   @override
   String? get barrierLabel => null;
 
   @override
   Duration get transitionDuration => const Duration(milliseconds: 1);
 
-  // ModalRoute's default transitionsBuilder returns the child unchanged —
-  // the popup animates itself internally (scale/fade/slide), so no
-  // route-level transition is needed.
   @override
   Widget buildPage(
     BuildContext context,
     Animation<double> animation,
     Animation<double> secondaryAnimation,
   ) {
-    return _GlassPopup(anchorRect: anchorRect, items: items);
+    return _GlassPopup(anchorRect: anchorRect, items: items, title: title);
   }
 }
 
-class _GlassPopup extends StatefulWidget {
-  const _GlassPopup({required this.anchorRect, required this.items});
+class _GlassPopup extends ConsumerStatefulWidget {
+  const _GlassPopup({
+    required this.anchorRect,
+    required this.items,
+    this.title,
+  });
 
   final Rect anchorRect;
   final List<GlassPopupItem> items;
+  final String? title;
 
   @override
-  State<_GlassPopup> createState() => _GlassPopupState();
+  ConsumerState<_GlassPopup> createState() => _GlassPopupState();
 }
 
-class _GlassPopupState extends State<_GlassPopup> {
-  static const double _width = 236;
-  static const double _rowHeight = 46;
-
+class _GlassPopupState extends ConsumerState<_GlassPopup> {
   bool _shown = false;
 
   @override
@@ -102,60 +119,109 @@ class _GlassPopupState extends State<_GlassPopup> {
 
   @override
   Widget build(BuildContext context) {
+    final settings = ref.watch(settingsProvider);
+    final tokens = DesignTokens.from(settings);
     final screen = MediaQuery.sizeOf(context);
-    final padding = MediaQuery.viewInsetsOf(context);
-    final estimatedHeight =
-        widget.items.length * _rowHeight + 24; // rows + vertical padding
 
-    // Right-align under the trigger; flip above it when there is no room.
-    var top = widget.anchorRect.bottom + 8;
-    if (top + estimatedHeight > screen.height - padding.bottom - 8) {
-      top = widget.anchorRect.top - 8 - estimatedHeight;
+    // Preview positioning maths (GlassPopupMenu.tsx useLayoutEffect).
+    const estRow = 48.0;
+    final est = widget.items.length * estRow + 30;
+    final right = math.max(10.0, screen.width - widget.anchorRect.right);
+    var top = widget.anchorRect.bottom + 10;
+    if (top + est > screen.height - 12) {
+      top = math.max(12.0, widget.anchorRect.top - est - 10);
     }
-    top = top.clamp(8.0, screen.height - estimatedHeight - 8);
-    final right = (screen.width - widget.anchorRect.right).clamp(8.0, 1e6);
+    final maxPanelWidth = math.min(320.0, screen.width - 24);
+    final maxPanelHeight = math.min(0.70 * screen.height, 520.0);
 
     return Stack(
       children: [
+        // popup-scrim
+        Positioned.fill(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => Navigator.of(context).pop(),
+            child: AnimatedOpacity(
+              opacity: _shown ? 1 : 0,
+              duration: const Duration(milliseconds: 140),
+              curve: Curves.easeOut,
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
+                child: const ColoredBox(color: Color(0x47080612)),
+              ),
+            ),
+          ),
+        ),
+        // glass-popup
         Positioned(
           top: top,
           right: right,
-          width: _width,
-          child: AnimatedScale(
-            scale: _shown ? 1 : 0.92,
-            alignment: Alignment.topRight,
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOutCubic,
-            child: AnimatedOpacity(
-              opacity: _shown ? 1 : 0,
-              duration: const Duration(milliseconds: 180),
-              curve: Curves.easeOut,
-              child: AnimatedSlide(
-                offset: _shown ? Offset.zero : const Offset(0, -0.04),
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOutCubic,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxHeight: (screen.height - 32)
-                        .clamp(120.0, screen.height - 32),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minWidth: math.min(230.0, maxPanelWidth),
+              maxWidth: maxPanelWidth,
+              maxHeight: maxPanelHeight,
+            ),
+            // popup-in: scale(0.82→1) + translateY(-8px→0) + fade,
+            // hero duration, spring curve, origin top-right.
+            child: GestureDetector(
+              // absorb panel-background taps (web only closes when the
+              // scrim itself is the event target)
+              behavior: HitTestBehavior.opaque,
+              onTapDown: (_) {},
+              child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: _shown ? 1 : 0),
+              duration: tokens.durHero,
+              curve: kSpring,
+              builder: (context, v, child) => Opacity(
+                opacity: v.clamp(0.0, 1.0),
+                child: Transform.translate(
+                  offset: Offset(0, -8 * (1 - v)),
+                  child: Transform.scale(
+                    scale: 0.82 + 0.18 * v,
+                    alignment: Alignment.topRight,
+                    child: child,
                   ),
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: GlassSurface(
-                      radius: GlassTokens.radiusMd,
-                      blur: GlassTokens.blurStrong,
-                      specular: false,
-                      parallax: false,
-                      child: Column(
+                ),
+              ),
+              child: SingleChildScrollView(
+                    padding: EdgeInsets.zero,
+                    // width: max-content, clamped by min/max constraints
+                    child: IntrinsicWidth(
+                      child: Glass(
+                        variant: GlassVariant.strong,
+                        radius: 20,
+                        padding: const EdgeInsets.all(7),
+                        child: Column(
                         mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          for (final item in widget.items)
-                            _MenuRow(item: item),
+                          if (widget.title != null) ...[
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 6, 10, 4),
+                              child: Text(
+                                widget.title!.toUpperCase(),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.66,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                            const _PopupGap(),
+                          ],
+                          for (var i = 0; i < widget.items.length; i++) ...[
+                            if (i > 0) const _PopupGap(),
+                            _PopupRow(item: widget.items[i]),
+                          ],
                         ],
+                        ),
                       ),
                     ),
                   ),
-                ),
               ),
             ),
           ),
@@ -165,76 +231,117 @@ class _GlassPopupState extends State<_GlassPopup> {
   }
 }
 
-class _MenuRow extends ConsumerWidget {
-  const _MenuRow({required this.item});
+/// .glass-popup flex gap: 2px
+class _PopupGap extends StatelessWidget {
+  const _PopupGap();
+
+  @override
+  Widget build(BuildContext context) => const SizedBox(height: 2);
+}
+
+class _PopupRow extends ConsumerStatefulWidget {
+  const _PopupRow({required this.item});
 
   final GlassPopupItem item;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_PopupRow> createState() => _PopupRowState();
+}
+
+class _PopupRowState extends ConsumerState<_PopupRow> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final item = widget.item;
     final scheme = Theme.of(context).colorScheme;
-    final baseColor = item.danger
-        ? scheme.error
-        : item.disabled
-            ? scheme.onSurface.withValues(alpha: 0.38)
-            : scheme.onSurface;
+    final tokens = DesignTokens.from(ref.watch(settingsProvider));
+    final accent = item.danger ? scheme.error : scheme.primary;
 
     return Semantics(
       button: true,
       enabled: !item.disabled,
-      child: InkWell(
-        onTap: item.disabled || item.onTap == null
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: item.disabled
+            ? null
+            : (_) {
+                // web: haptic('tap') fires on pointer-down
+                Haptics.tap(ref);
+                setState(() => _pressed = true);
+              },
+        onTapCancel: () => setState(() => _pressed = false),
+        onTap: item.disabled
             ? null
             : () {
-                Haptics.light(ref);
-                final action = item.onTap!;
+                setState(() => _pressed = false);
+                final action = item.onTap;
                 Navigator.of(context).pop();
-                action();
+                // Defer so the menu closes before heavy navigation renders
+                // (preview: setTimeout(…, 0)).
+                if (action != null) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) => action());
+                }
               },
-        child: SizedBox(
-          height: 46,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Row(
-              children: [
-                Icon(item.icon, size: 18, color: baseColor),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight:
-                              item.checked ? FontWeight.w700 : FontWeight.w500,
-                          color: baseColor,
-                        ),
+        child: AnimatedScale(
+          scale: _pressed ? 0.97 : 1,
+          duration: tokens.durTap,
+          curve: kSpring,
+          child: Opacity(
+            opacity: item.disabled ? 0.4 : 1,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      color: accent.withValues(
+                        alpha: item.danger ? 0.13 : 0.14,
                       ),
-                      if (item.hint != null)
+                    ),
+                    child: Center(
+                      child: SvgIcon(item.icon, size: 18, color: accent),
+                    ),
+                  ),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
                         Text(
-                          item.hint!,
+                          item.label,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 10.5,
-                            color: baseColor.withValues(alpha: 0.6),
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: item.danger ? scheme.error : scheme.onSurface,
                           ),
                         ),
-                    ],
+                        if (item.hint != null)
+                          Text(
+                            item.hint!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-                if (item.checked)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 8),
-                    child: Icon(Icons.check_rounded,
-                        size: 17, color: scheme.primary),
-                  ),
-              ],
+                  if (item.checked) ...[
+                    const SizedBox(width: 11),
+                    SvgIcon('check', size: 16, color: scheme.primary),
+                  ],
+                ],
+              ),
             ),
           ),
         ),

@@ -78,5 +78,9 @@
   "timelineGroupYear": "বছর",
   "timelineZoomIn": "জুম ইন",
   "timelineZoomOut": "জুম আউট",
-  "forYouRecentlyAdded": "সম্প্রতি যোগ করা"
+  "forYouRecentlyAdded": "সম্প্রতি যোগ করা",
+  "sortNewest": "নতুন আগে",
+  "sortOldest": "পুরনো আগে",
+  "menuLabel": "মেনু",
+  "backLabel": "ফিরে যান"
 }

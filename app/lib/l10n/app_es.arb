@@ -78,5 +78,9 @@
   "timelineGroupYear": "Año",
   "timelineZoomIn": "Acercar",
   "timelineZoomOut": "Alejar",
-  "forYouRecentlyAdded": "Añadidos recientemente"
+  "forYouRecentlyAdded": "Añadidos recientemente",
+  "sortNewest": "Más recientes primero",
+  "sortOldest": "Más antiguas primero",
+  "menuLabel": "Menú",
+  "backLabel": "Atrás"
 }

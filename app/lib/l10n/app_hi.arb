@@ -78,5 +78,9 @@
   "timelineGroupYear": "वर्ष",
   "timelineZoomIn": "ज़ूम इन",
   "timelineZoomOut": "ज़ूम आउट",
-  "forYouRecentlyAdded": "हाल ही में जोड़े गए"
+  "forYouRecentlyAdded": "हाल ही में जोड़े गए",
+  "sortNewest": "नए पहले",
+  "sortOldest": "पुराने पहले",
+  "menuLabel": "मेन्यू",
+  "backLabel": "वापस"
 }

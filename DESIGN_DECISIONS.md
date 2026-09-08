@@ -239,3 +239,65 @@ one assumes the original plugin is viable.
   The top-right gear became a hamburger; menu = Settings first, Memories, and on
   Timeline: Group Day/Month/Year (persisted `timelineGrouping`, wired into
   `GroupTimeline`) + Zoom in/out (existing grid-density setting, clamped 2–8).
+
+## 15. Full rebuild — Stage A foundation (preview-exact design system)
+
+  The Flutter UI is being rebuilt from scratch against the sandbox preview
+  (web/), which is the single source of truth. Stage A lays the foundation;
+  old feature screens stay functional on compatibility getters until Stage B
+  replaces them.
+
+  - **Icons**: the preview's 108 hand-drawn 24px icons (web core/icons.tsx)
+    are generated verbatim as SVG assets (`app/assets/icons/<name>.svg`
+    stroke + `<name>_f.svg` filled) and rendered through `SvgIcon`
+    (flutter_svg, srcIn colour filter = SVG `currentColor`). Material Icons
+    are no longer used for nav/menu chrome.
+  - **Design tokens** (`core/design/tokens.dart`): port of design.ts —
+    curves (kSpring/kSpringSoft/kEaseOut/kEaseInOut/kClockSweep), base
+    durations (tap 140 / base 220 / sheet 320 / page 260 / hero 420 ms),
+    radii (10/16/22/30/capsule), space scale, animation-speed and layout-
+    density factors, and the exact glass maths (blur = 5 + i·0.3, saturate,
+    alpha = 0.86 − t·0.0058, highlight/shadow factors).
+  - **Theme** (`core/theme/seed_theme.dart`): port of theme.ts — six seeds
+    plus wallpaper-dynamic tinting, the full HSL light/dark scheme recipe,
+    14.5px/+0.1ls body type, press-scale feedback (no ink splashes) and the
+    preview's slide-in route transition (X 26→0, fade 0.4→1, ease-out).
+  - **Settings** (`core/settings/app_settings.dart`): the preview's Settings
+    model 1:1 (nested glass/albums/photo-edit/video-edit/gesture/for-you/
+    AI/notifications/backup groups, tabOrder, gridLevel…) persisted as one
+    JSON blob (`gallery.v1.settings`, deep-merged over defaults) with a
+    one-time migration of the legacy per-field keys. Flutter-only extras:
+    performance mode, device-tier auto-detect, parallax toggle.
+  - **Glass** (`core/widgets/glass_material.dart`): `Glass` with the four
+    CSS materials (base/subtle/strong/raised) — composed blur+saturate
+    backdrop filter, surface tint painted over the blur (CSS paint order),
+    1px top inset highlight, strong's 118° diagonal specular sheen, and a
+    solid fallback when the frame-tier monitor requests reduced
+    transparency (no blur pass at all).
+  - **Floating navigation** (`core/widgets/floating_navigation.dart`):
+    capsule nav exactly as the preview — glass-strong pill (pad 6, bottom
+    18+safe, max-width vw−28), top gloss sheen, spring-animated sliding
+    primary pill measured from the active button, active icon lift/scale
+    (−1.5px / ×1.1), 10.5px 650-weight labels, compact style variant, and
+    the four individual tap animations painted with CustomPainter
+    keyframe transcription (sparkle bloom + delayed glints 950ms timeline,
+    clock-hand 360° sweep 720ms with the clock-sweep curve, folder breathe
+    + photo-pop cards 780ms, lens swell + glint + handle sway 760ms).
+    Transform/opacity only; static icon fallback when animations are off.
+  - **Menus/toasts/headers**: `GlassPopupMenu` (scrim rgba(8,6,18,.28)+2px
+    blur, max-content 230–320px panel, r20/pad7, popup-in scale .82→1 +
+    −8px→0 spring, flip-up overflow logic), `ScreenMenu` (42px trigger that
+    lights while open), `PageHead` (27px/700 h1, sticky-style blurred head,
+    with-back variant) and the toast system (bottom 112+safe, inverse-surface
+    pill, bar-rise2 spring entry, 3.2s/6s auto-dismiss).
+  - **Shell**: tab switches remount the screen behind the preview's
+    page-anim (scale .975→1, Y 10→0, fade, hero spring) via AnimatedSwitcher
+    with an incoming-only layout builder; ambient background paints the
+    `.app-root` three radial washes once per theme/size change; content is
+    capped at 1180px. The top-right global ScreenMenu is TEMPORARY — Stage B
+    moves per-screen menus into each screen's PageHead (preview parity) and
+    removes it.
+  - Deferred to Stage B/C (documented, not faked): the root app-lock gate
+    (web App.tsx) ships with the Settings → Privacy page that exposes
+    appLock/biometrics/PIN; viewer/editor/share overlays remain Navigator
+    routes until Stage C rebuilds them as preview-parity layers.

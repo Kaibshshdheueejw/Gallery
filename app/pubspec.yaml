@@ -37,6 +37,11 @@ dependencies:
   # You tinting of glass) — no platform channels, safe in isolates.
   image: ^4.2.0
 
+  # The preview's hand-drawn 24px stroke icon set ships as generated SVG
+  # assets (assets/icons/*.svg, extracted verbatim from web core/icons.tsx)
+  # so icon shapes are pixel-identical to the sandbox preview.
+  flutter_svg: ^2.0.10
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -47,3 +52,5 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   generate: true # gen-l10n: see l10n.yaml and lib/l10n/*.arb
+  assets:
+    - assets/icons/

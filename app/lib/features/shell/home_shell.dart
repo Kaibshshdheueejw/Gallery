@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/haptics.dart';
+import '../../core/design/tokens.dart';
 import '../../core/settings/app_settings.dart';
-import '../../core/theme/glass_theme.dart';
-import '../../core/widgets/floating_nav_bar.dart';
+import '../../core/widgets/floating_navigation.dart';
 import '../../core/widgets/glass_popup_menu.dart';
-import '../../core/widgets/glass_surface.dart';
-import '../../core/widgets/pressable.dart';
+import '../../core/widgets/screen_menu.dart';
+import '../../core/widgets/toast.dart';
 import '../../l10n/app_localizations.dart';
 import '../albums/albums_screen.dart';
 import '../foryou/foryou_screen.dart';
@@ -17,15 +16,21 @@ import '../settings/settings_screen.dart';
 import '../shared/permission_gate.dart';
 import '../timeline/timeline_screen.dart';
 
-/// Root shell: the four primary destinations behind the floating glass
-/// capsule (§3). Tabs are kept alive in an IndexedStack so grid scroll
-/// position and lazy pages survive tab switches.
+/// Root shell — the Flutter twin of the preview's App.tsx:
+///   • ambient radial-wash background (`.app-root`, three gradients over
+///     surfaceDim, painted once, zero per-frame cost)
+///   • content column capped at 1180 logical px (`.content`), gated by
+///     [PermissionGate]
+///   • tab switches REMOUNT the screen behind a page-in transition
+///     (scale .975 → 1, translateY 10 → 0, fade, hero duration, spring) —
+///     exactly like the preview's routeKey'd `.page-anim` wrapper
+///   • floating capsule navigation in the preview's tab order
+///   • toast host above the nav
 ///
-/// Library access is gated through [PermissionGate] — nothing in the tab
-/// content is built until photo_manager confirms access, and the system
-/// prompt is only fired from the rationale screen (never on cold start).
-/// The gate also owns the Android 14 / iOS limited-access banner with a
-/// "Select more photos" action (presentLimited).
+/// The top-right ScreenMenu is TEMPORARY: Stage B gives every screen its
+/// own PageHead + ScreenMenu (web parity), after which this global one is
+/// removed. It mirrors the preview's Timeline menu for the items that
+/// exist today (Settings, Memories, sort, grouping, zoom).
 class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
 
@@ -35,20 +40,16 @@ class HomeShell extends ConsumerStatefulWidget {
 
 class _HomeShellState extends ConsumerState<HomeShell>
     with WidgetsBindingObserver {
-  int _tab = 0;
-  final GlobalKey _menuAnchorKey = GlobalKey();
-
-  static const _tabs = <Widget>[
-    ForYouScreen(),
-    TimelineScreen(),
-    AlbumsScreen(),
-    SearchScreen(),
-  ];
+  TabId _tab = TabId.foryou;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Web parity (store.initApp): boot into the configured default tab.
+    // Settings hydrate before HomeShell is built (main awaits hydrate()).
+    final initial = ref.read(settingsProvider).defaultTab;
+    if (initial != _tab) _tab = initial;
   }
 
   @override
@@ -67,197 +68,227 @@ class _HomeShellState extends ConsumerState<HomeShell>
     }
   }
 
-  void _onTab(int index) {
-    setState(() => _tab = index);
-  }
+  Widget _screenFor(TabId tab) => switch (tab) {
+        TabId.foryou => const ForYouScreen(),
+        TabId.timeline => const TimelineScreen(),
+        TabId.albums => const AlbumsScreen(),
+        TabId.search => const SearchScreen(),
+      };
 
-  /// Hamburger menu (web parity: Settings first, then per-tab contextual
-  /// actions). Timeline gets grouping + zoom-density controls; every tab
-  /// gets Settings and the dedicated Memories screen.
-  void _openMenu() {
-    final box =
-        _menuAnchorKey.currentContext?.findRenderObject() as RenderBox?;
-    if (box == null) return;
-    final anchor = box.localToGlobal(Offset.zero) & box.size;
+  List<GlassPopupItem> _menuItems(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final settings = ref.read(settingsProvider);
+    final settings = ref.watch(settingsProvider);
     final controller = ref.read(settingsProvider.notifier);
     final nav = Navigator.of(context);
-    Haptics.light(ref);
-
-    showGlassPopupMenu(
-      context,
-      anchorRect: anchor,
-      items: [
+    return [
+      GlassPopupItem(
+        icon: 'settings',
+        label: l10n.settings,
+        onTap: () => nav.push(
+          MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
+        ),
+      ),
+      GlassPopupItem(
+        icon: 'memories',
+        label: l10n.memoriesTitle,
+        onTap: () => nav.push(
+          MaterialPageRoute<void>(builder: (_) => const MemoriesScreen()),
+        ),
+      ),
+      if (_tab == TabId.timeline) ...[
         GlassPopupItem(
-          icon: Icons.settings_outlined,
-          label: l10n.settings,
-          onTap: () => nav.push(
-            MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
-          ),
+          icon: 'sort',
+          label: l10n.sortNewest,
+          checked: settings.sortOrder == SortOrder.newest,
+          onTap: () => controller.setSortOrder(SortOrder.newest),
         ),
         GlassPopupItem(
-          icon: Icons.collections_outlined,
-          label: l10n.memoriesTitle,
-          onTap: () => nav.push(
-            MaterialPageRoute<void>(builder: (_) => const MemoriesScreen()),
-          ),
+          icon: 'sort',
+          label: l10n.sortOldest,
+          checked: settings.sortOrder == SortOrder.oldest,
+          onTap: () => controller.setSortOrder(SortOrder.oldest),
         ),
-        if (_tab == 1) ...[
-          for (final (index, entry) in [
-            (Icons.calendar_view_day_rounded, l10n.timelineGroupDay),
-            (Icons.calendar_view_week_rounded, l10n.timelineGroupMonth),
-            (Icons.calendar_view_month_rounded, l10n.timelineGroupYear),
-          ].indexed)
-            GlassPopupItem(
-              icon: entry.$1,
-              label: entry.$2,
-              checked: settings.timelineGrouping == index,
-              onTap: () => controller.setTimelineGrouping(index),
-            ),
-          GlassPopupItem(
-            icon: Icons.zoom_in_rounded,
-            label: l10n.timelineZoomIn,
-            disabled: settings.gridColumns >= 8,
-            onTap: () => controller.setGridColumns(settings.gridColumns + 1),
-          ),
-          GlassPopupItem(
-            icon: Icons.zoom_out_rounded,
-            label: l10n.timelineZoomOut,
-            disabled: settings.gridColumns <= 2,
-            onTap: () => controller.setGridColumns(settings.gridColumns - 1),
-          ),
-        ],
+        // Grouping (web: day = level ≥ 2, month = 1, year = 0)
+        GlassPopupItem(
+          icon: 'grid',
+          label: l10n.timelineGroupDay,
+          checked: settings.gridLevel >= 2,
+          onTap: () => controller.setGridLevel(3),
+        ),
+        GlassPopupItem(
+          icon: 'grid',
+          label: l10n.timelineGroupMonth,
+          checked: settings.gridLevel == 1,
+          onTap: () => controller.setGridLevel(1),
+        ),
+        GlassPopupItem(
+          icon: 'grid',
+          label: l10n.timelineGroupYear,
+          checked: settings.gridLevel == 0,
+          onTap: () => controller.setGridLevel(0),
+        ),
+        GlassPopupItem(
+          icon: 'zoomIn',
+          label: l10n.timelineZoomIn,
+          disabled: settings.gridLevel >= 5,
+          onTap: () => controller.setGridLevel(settings.gridLevel + 1),
+        ),
+        GlassPopupItem(
+          icon: 'zoomOut',
+          label: l10n.timelineZoomOut,
+          disabled: settings.gridLevel <= 0,
+          onTap: () => controller.setGridLevel(settings.gridLevel - 1),
+        ),
       ],
-    );
+    ];
   }
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
+    final settings = ref.watch(settingsProvider);
+    final tokens = DesignTokens.from(settings);
 
     return Scaffold(
       extendBody: true, // content flows under the floating capsule
       body: Stack(
         children: [
-          // Ambient aurora background — two soft radial washes behind
-          // everything; cheap (no blur), gives glass something to refract.
           const Positioned.fill(child: _AmbientBackground()),
           Positioned.fill(
-            child: PermissionGate(
-              child: IndexedStack(index: _tab, children: _tabs),
-            ),
-          ),
-          // Hamburger menu: floating glass button, top-right (web parity —
-          // every tab opens the same anchored popup, Settings first).
-          SafeArea(
-            child: Align(
-              alignment: Alignment.topRight,
-              child: Padding(
-                padding: const EdgeInsets.only(right: 12, top: 4),
-                child: Pressable(
-                  onTap: _openMenu,
-                  child: GlassSurfaceCircle(
-                    key: _menuAnchorKey,
-                    child: Icon(Icons.menu_rounded,
-                        size: 20, color: Theme.of(context).colorScheme.onSurface),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1180),
+                child: PermissionGate(
+                  child: AnimatedSwitcher(
+                    duration: tokens.animationsEnabled
+                        ? tokens.durHero
+                        : Duration.zero,
+                    switchInCurve: kSpring,
+                    layoutBuilder: (currentChild, previousChildren) =>
+                        // Web parity: re-keying unmounts the old screen
+                        // immediately — only the incoming page animates.
+                        Stack(
+                          fit: StackFit.expand,
+                          children: [if (currentChild != null) currentChild],
+                        ),
+                    transitionBuilder: (child, animation) {
+                      final a = CurvedAnimation(
+                        parent: animation,
+                        curve: kSpring,
+                      );
+                      // One spring drives opacity + transform (CSS
+                      // animation semantics); CSS clamps opacity >1
+                      // implicitly, so clamp here too.
+                      return AnimatedBuilder(
+                        animation: a,
+                        builder: (context, c) => Opacity(
+                          opacity: a.value.clamp(0.0, 1.0),
+                          child: Transform.translate(
+                            offset: Offset(0, 10 * (1 - a.value)),
+                            child: Transform.scale(
+                              scale: 0.975 + 0.025 * a.value,
+                              child: c,
+                            ),
+                          ),
+                        ),
+                        child: child,
+                      );
+                    },
+                    child: KeyedSubtree(
+                      key: ValueKey(_tab),
+                      child: _screenFor(_tab),
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: SafeArea(
-              top: false,
-              child: FloatingNavBar(
-                currentIndex: _tab,
-                onSelected: _onTab,
-                items: [
-                  FloatingNavItem(
-                    icon: Icons.auto_awesome_outlined,
-                    activeIcon: Icons.auto_awesome_rounded,
-                    labelBuilder: (_) => l10n.tabForYou,
-                  ),
-                  FloatingNavItem(
-                    icon: Icons.photo_library_outlined,
-                    activeIcon: Icons.photo_library_rounded,
-                    labelBuilder: (_) => l10n.tabTimeline,
-                  ),
-                  FloatingNavItem(
-                    icon: Icons.grid_view_outlined,
-                    activeIcon: Icons.grid_view_rounded,
-                    labelBuilder: (_) => l10n.tabAlbums,
-                  ),
-                  FloatingNavItem(
-                    icon: Icons.search_rounded,
-                    activeIcon: Icons.search_rounded,
-                    labelBuilder: (_) => l10n.tabSearch,
-                  ),
-                ],
+          // TEMPORARY global screen menu (see class doc).
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topRight,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 12, top: 4),
+                child: ScreenMenu(items: _menuItems(context)),
               ),
             ),
           ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: FloatingNavigation(
+              activeTab: _tab,
+              onTabSelected: (tab) => setState(() => _tab = tab),
+            ),
+          ),
+          const ToastHost(),
         ],
       ),
     );
   }
 }
 
-/// Small circular glass button (hamburger trigger, FAB-like surfaces).
-class GlassSurfaceCircle extends StatelessWidget {
-  const GlassSurfaceCircle({super.key, required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 42,
-      height: 42,
-      child: GlassSurface(
-        radius: GlassTokens.radiusPill,
-        specular: false,
-        parallax: false,
-        child: Center(child: child),
-      ),
-    );
-  }
-}
-
-/// Two radial colour washes (theme-tinted, dark-mode aware). Painted once,
-/// no animation loop → zero per-frame cost (§12 performance).
+/// `.app-root` background — three soft radial washes over surfaceDim:
+///   900×480 @ (12%, -8%)  primary @22% → transparent 68%
+///   760×420 @ (92%, 4%)   tertiary @16% → transparent 66%
+///   1000×600 @ (50%, 108%) secondary @14% → transparent 70%
+/// Painted once per theme/size change, no animation loop (§25).
 class _AmbientBackground extends StatelessWidget {
   const _AmbientBackground();
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final isDark = scheme.brightness == Brightness.dark;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: RadialGradient(
-          center: const Alignment(-0.85, -1.0),
-          radius: 1.4,
-          colors: [
-            scheme.primary.withValues(alpha: isDark ? 0.16 : 0.10),
-            Colors.transparent,
-          ],
-        ),
-      ),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: RadialGradient(
-            center: const Alignment(1.0, 1.1),
-            radius: 1.3,
-            colors: [
-              scheme.tertiary.withValues(alpha: isDark ? 0.12 : 0.08),
-              Colors.transparent,
-            ],
-          ),
-        ),
-        child: const SizedBox.expand(),
-      ),
+    return CustomPaint(
+      painter: _AmbientPainter(scheme),
+      size: Size.infinite,
     );
   }
+}
+
+class _AmbientPainter extends CustomPainter {
+  const _AmbientPainter(this.scheme);
+
+  final ColorScheme scheme;
+
+  void _wash(
+    Canvas canvas,
+    Size size,
+    double px,
+    double py,
+    double rx,
+    double ry,
+    Color color,
+    double stop,
+  ) {
+    final shader = RadialGradient(
+      colors: [color, color.withValues(alpha: 0)],
+      stops: [0, stop],
+    ).createShader(Rect.fromCircle(center: Offset.zero, radius: ry));
+    canvas.save();
+    canvas.clipRect(Offset.zero & size);
+    canvas.translate(size.width * px, size.height * py);
+    canvas.scale(rx / ry, 1);
+    canvas.drawRect(
+      Rect.fromCenter(center: Offset.zero, width: ry * 2, height: ry * 2),
+      Paint()..shader = shader,
+    );
+    canvas.restore();
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()..color = scheme.surfaceDim,
+    );
+    _wash(canvas, size, 0.12, -0.08, 900, 480,
+        scheme.primary.withValues(alpha: 0.22), 0.68);
+    _wash(canvas, size, 0.92, 0.04, 760, 420,
+        scheme.tertiary.withValues(alpha: 0.16), 0.66);
+    _wash(canvas, size, 0.50, 1.08, 1000, 600,
+        scheme.secondary.withValues(alpha: 0.14), 0.70);
+  }
+
+  @override
+  bool shouldRepaint(_AmbientPainter oldDelegate) =>
+      oldDelegate.scheme != scheme;
 }
