@@ -19,13 +19,20 @@ enum GlassVariant { base, subtle, strong, raised }
 
 /// Saturation matrix for backdrop-filter: saturate(f) — the standard
 /// luminance-preserving scale used by CSS/SVG filters.
+///
+/// ImageFilter.matrix takes a 4×4 matrix in COLUMN-major order (engine:
+/// DlMatrix::MakeColumn) — no SVG 5th translate column.
+///   R' = (r+(1-r)f)·R + g(1-f)·G + b(1-f)·B   (row 0)
+///   G' = r(1-f)·R + (g+(1-g)f)·G + b(1-f)·B   (row 1)
+///   B' = r(1-f)·R + g(1-f)·G + (b+(1-b)f)·B   (row 2)
+///   A' = A                                     (row 3)
 ImageFilter _saturate(double f) {
-  final r = 0.2126, g = 0.7152, b = 0.0722;
+  const r = 0.2126, g = 0.7152, b = 0.0722;
   return ImageFilter.matrix(Float64List.fromList(<double>[
-    r + (1 - r) * f, g - g * f, b - b * f, 0, 0, //
-    r - r * f, g + (1 - g) * f, b - b * f, 0, 0, //
-    r - r * f, g - g * f, b + (1 - b) * f, 0, 0, //
-    0, 0, 0, 1, 0, //
+    r + (1 - r) * f, r - r * f, r - r * f, 0, // column 0
+    g - g * f, g + (1 - g) * f, g - g * f, 0, // column 1
+    b - b * f, b - b * f, b + (1 - b) * f, 0, // column 2
+    0, 0, 0, 1, // column 3 (alpha passthrough)
   ]));
 }
 
