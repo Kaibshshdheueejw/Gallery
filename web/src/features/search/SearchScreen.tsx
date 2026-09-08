@@ -1,11 +1,12 @@
-import { useMemo, useState } from 'react';
-import { openViewer, pushRecentSearch, useApp } from '../../store';
+import { useEffect, useMemo, useState } from 'react';
+import { clearRecentSearches, navigate, openViewer, pushRecentSearch, requestSearch, rescanLibrary, useApp } from '../../store';
 import { smartSearch, EXAMPLE_QUERIES } from '../../domain/usecases/smartSearch';
 import { faceClusters, places } from '../../domain/usecases/library';
 import { PhotoGrid } from '../../components/PhotoGrid';
 import { SelectionBar } from '../../components/SelectionBar';
 import { useSelection } from '../../components/useSelection';
 import { Chip, EmptyState, SectionTitle } from '../../components/ui';
+import { ScreenMenu } from '../../components/ScreenMenu';
 import { Icon } from '../../core/icons';
 import { translate } from '../../core/i18n';
 
@@ -15,6 +16,14 @@ export function SearchScreen() {
   const t = (k: string) => translate(settings.lang, k);
   const [query, setQuery] = useState('');
   const selection = useSelection();
+
+  /* one-shot query requested from For You smart suggestions */
+  useEffect(() => {
+    if (app.pendingSearch !== null) {
+      setQuery(app.pendingSearch);
+      requestSearch(null);
+    }
+  }, [app.pendingSearch]);
 
   const result = useMemo(() => smartSearch(query, items, app.faceNames), [query, items, app.faceNames]);
   const clusters = useMemo(() => faceClusters(items, app.faceNames), [items, app.faceNames]);
@@ -39,6 +48,14 @@ export function SearchScreen() {
             </button>
           )}
         </div>
+        <ScreenMenu
+          title={t('tab_search')}
+          items={[
+            { icon: 'settings', label: t('settings'), onClick: () => navigate({ name: 'settings' }) },
+            { icon: 'history', label: 'Clear recent searches', disabled: app.recentSearches.length === 0, onClick: () => clearRecentSearches() },
+            { icon: 'refresh', label: 'Refresh library', hint: 're-run the on-device scan', onClick: () => { rescanLibrary(); } },
+          ]}
+        />
       </header>
 
       <div className="scroll-area padded">

@@ -8,6 +8,7 @@ import { Icon } from '../core/icons';
 import { haptic } from '../core/haptics';
 import { setTab, useApp } from '../store';
 import { translate } from '../core/i18n';
+import { AlbumsNavIcon, ClockNavIcon, SearchNavIcon, SparkleNavIcon } from './NavIcons';
 import type { TabId } from '../data/models';
 
 /* ── surfaces ─────────────────────────────────────────────────────────── */
@@ -159,18 +160,34 @@ export function SettingsCategory({ icon, title, desc, onClick }: { icon: string;
 }
 
 /* ── floating capsule navigation ──────────────────────────────────────── */
-const NAV_META: Record<TabId, { icon: string; key: string }> = {
-  foryou: { icon: 'sparkle', key: 'tab_foryou' },
-  timeline: { icon: 'clock', key: 'tab_timeline' },
-  albums: { icon: 'folder', key: 'tab_albums' },
-  search: { icon: 'search', key: 'tab_search' },
+const NAV_META: Record<TabId, { key: string }> = {
+  foryou: { key: 'tab_foryou' },
+  timeline: { key: 'tab_timeline' },
+  albums: { key: 'tab_albums' },
+  search: { key: 'tab_search' },
 };
+
+/**
+ * Each tab icon has its OWN tap animation (§17): sparkle bloom, clock-hand
+ * sweep, folder photo-pop, search lens-swell. The tap counter remounts the
+ * SVG art so the CSS keyframes replay on every press — even on the active tab.
+ */
+function NavIcon({ tab, pulse, active }: { tab: TabId; pulse: number; active: boolean }) {
+  const props = { pulse, active, size: 21 };
+  switch (tab) {
+    case 'foryou': return <SparkleNavIcon {...props} />;
+    case 'timeline': return <ClockNavIcon {...props} />;
+    case 'albums': return <AlbumsNavIcon {...props} />;
+    case 'search': return <SearchNavIcon {...props} />;
+  }
+}
 
 export function FloatingNavigation() {
   const { settings, activeTab } = useApp();
   const t = (k: string) => translate(settings.lang, k);
   const refs = useRef(new Map<TabId, HTMLButtonElement>());
   const [pill, setPill] = useState<{ x: number; w: number } | null>(null);
+  const [pulses, setPulses] = useState<Record<TabId, number>>({ foryou: 0, timeline: 0, albums: 0, search: 0 });
   const compact = settings.navStyle === 'compact';
 
   const measure = () => {
@@ -183,6 +200,11 @@ export function FloatingNavigation() {
     return () => window.removeEventListener('resize', measure);
   });
 
+  const onTap = (tab: TabId) => {
+    setPulses((p) => ({ ...p, [tab]: p[tab] + 1 }));
+    setTab(tab);
+  };
+
   return (
     <nav className={`float-nav glass glass-strong${compact ? ' compact' : ''}`} aria-label="Primary">
       {pill && <span className="nav-pill" style={{ transform: `translateX(${pill.x}px)`, width: pill.w }} />}
@@ -194,9 +216,13 @@ export function FloatingNavigation() {
           className={`nav-btn${activeTab === tab ? ' on' : ''}`}
           aria-current={activeTab === tab ? 'page' : undefined}
           onPointerDown={() => haptic('select')}
-          onClick={() => setTab(tab)}
+          onClick={() => onTap(tab)}
         >
-          <span className="nav-ico"><Icon name={NAV_META[tab].icon} size={21} /></span>
+          <span className="nav-ico">
+            {settings.animations
+              ? <NavIcon tab={tab} pulse={pulses[tab]} active={activeTab === tab} />
+              : <Icon name={tab === 'foryou' ? 'sparkle' : tab === 'timeline' ? 'clock' : tab === 'albums' ? 'folder' : 'search'} size={21} />}
+          </span>
           {!compact && <em>{t(NAV_META[tab].key)}</em>}
         </button>
       ))}

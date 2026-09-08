@@ -5,15 +5,15 @@
  */
 import { useSyncExternalStore } from 'react';
 import type { CustomAlbum, EditState, MediaItem, Settings, TabId } from './data/models';
-import { DEFAULT_SETTINGS } from './data/models';
+import { DEFAULT_SETTINGS, emptyEdit, migrateEdits } from './data/models';
 import { loadLibrary } from './data/datasources/mediaStore';
 import { scanLibrary, type ScanReport } from './ml/pipelines';
 
 export type AlbumRef = { type: 'smart' | 'folder' | 'place' | 'event' | 'person' | 'album'; id: string; title: string };
 
 export type SettingsPage =
-  | 'main' | 'appearance' | 'gallery' | 'playback' | 'privacy'
-  | 'storage' | 'backup' | 'notifications' | 'ai' | 'permissions' | 'about';
+  | 'main' | 'appearance' | 'gallery' | 'albums' | 'playback' | 'photoEdit' | 'videoEdit'
+  | 'privacy' | 'cleanup' | 'backup' | 'notifications' | 'ai' | 'permissions' | 'about';
 
 export type Route =
   | { name: 'tabs' }
@@ -42,6 +42,10 @@ export interface AppState {
   shareIds: string[] | null;
   toasts: Toast[];
   wallpaperSeed: string | null;
+  /** incremented when a screen menu asks its grid to enter selection mode */
+  selectRequest: number;
+  /** one-shot search query requested by another screen (For You suggestions) */
+  pendingSearch: string | null;
 }
 
 const LS_KEY = 'nova.gallery.v1';
@@ -57,6 +61,8 @@ interface Persisted {
   recentSearches: string[];
   recentlyViewed: string[];
   customAlbums: CustomAlbum[];
+  generated: MediaItem[];
+  titles: Record<string, string>;
 }
 
 /** deep-merge persisted settings over defaults so new nested keys survive upgrades */
@@ -69,6 +75,14 @@ function mergeSettings(base: Settings, saved: Partial<Settings> | undefined): Se
     glass: { ...base.glass, ...(saved.glass ?? {}) },
     ai: { ...base.ai, ...(saved.ai ?? {}) },
     notifications: { ...base.notifications, ...(saved.notifications ?? {}) },
+    albums: { ...base.albums, ...(saved.albums ?? {}) },
+    photoEdit: { ...base.photoEdit, ...(saved.photoEdit ?? {}) },
+    videoEdit: {
+      ...base.videoEdit,
+      ...(saved.videoEdit ?? {}),
+      gestures: { ...base.videoEdit.gestures, ...(saved.videoEdit?.gestures ?? {}) },
+    },
+    foryou: { ...base.foryou, ...(saved.foryou ?? {}) },
   };
 }
 
@@ -98,6 +112,8 @@ let state: AppState = {
   shareIds: null,
   toasts: [],
   wallpaperSeed: null,
+  selectRequest: 0,
+  pendingSearch: null,
 };
 
 const listeners = new Set<() => void>();
@@ -124,22 +140,30 @@ export function dismissToast(id: number) {
 }
 
 function persist() {
+  const base = emptyEdit();
+  const baseJson = JSON.stringify(base);
   const p: Persisted = {
     favorites: state.items.filter((i) => i.favorite).map((i) => i.id),
     trash: Object.fromEntries(state.items.filter((i) => i.trashedAt !== null).map((i) => [i.id, i.trashedAt!])),
     locked: state.items.filter((i) => i.locked).map((i) => i.id),
     hidden: state.items.filter((i) => i.hidden).map((i) => i.id),
-    edits: Object.fromEntries(state.items.filter((i) => JSON.stringify(i.edits) !== JSON.stringify(defaultEdits())).map((i) => [i.id, i.edits])),
+    edits: Object.fromEntries(
+      state.items
+        .filter((i) => !i.generated && JSON.stringify(i.edits) !== baseJson)
+        .map((i) => [i.id, i.edits]),
+    ),
     faceNames: state.faceNames,
     settings: state.settings,
     recentSearches: state.recentSearches,
     recentlyViewed: state.recentlyViewed,
     customAlbums: state.customAlbums,
+    // generated items persist whole when their source survives reloads
+    // (data: URLs and bundled asset paths do; blob: URLs don't — those are
+    // offered as downloads instead).
+    generated: state.items.filter((i) => i.generated && !i.src.startsWith('blob:')),
+    titles: Object.fromEntries(state.items.filter((i) => !i.generated).map((i) => [i.id, i.title])),
   };
   try { localStorage.setItem(LS_KEY, JSON.stringify(p)); } catch { /* quota */ }
-}
-function defaultEdits(): EditState {
-  return { rotate: 0, flipH: false, flipV: false, crop: null, filterId: 'original', adjust: { brightness: 0, contrast: 0, saturation: 0, warmth: 0, sharpen: 0, vignette: 0, blur: 0 }, enhanced: false, erased: [], portraitBlur: 0, markup: [], trim: null };
 }
 
 /* ── boot ─────────────────────────────────────────────────────────────── */
@@ -151,26 +175,32 @@ export async function initApp() {
   const locked = new Set(persisted.locked ?? []);
   const hidden = new Set(persisted.hidden ?? []);
   const edits = persisted.edits ?? {};
+  const titles = persisted.titles ?? {};
   for (const item of items) {
     item.favorite = fav.has(item.id);
     item.trashedAt = trash[item.id] ?? null;
     item.locked = locked.has(item.id);
     item.hidden = hidden.has(item.id);
-    if (edits[item.id]) item.edits = { ...defaultEdits(), ...edits[item.id] };
+    if (edits[item.id]) item.edits = migrateEdits(edits[item.id]);
+    if (titles[item.id]) item.title = titles[item.id];
   }
+  // merge in-app generated items (collages, extracted frames, saved copies…)
+  const generated = (persisted.generated ?? []).map((g) => ({ ...g, edits: migrateEdits(g.edits) }));
+  const all = [...generated, ...items];
+  const settings = mergeSettings(DEFAULT_SETTINGS, persisted.settings);
   set({
-    items,
+    items: all,
     faceNames: persisted.faceNames ?? {},
-    settings: mergeSettings(DEFAULT_SETTINGS, persisted.settings),
-    activeTab: mergeSettings(DEFAULT_SETTINGS, persisted.settings).defaultTab,
+    settings,
+    activeTab: settings.defaultTab,
     recentSearches: persisted.recentSearches ?? [],
     recentlyViewed: persisted.recentlyViewed ?? [],
     customAlbums: persisted.customAlbums ?? [],
     status: 'scanning',
-    scan: { done: 0, total: items.length },
+    scan: { done: 0, total: all.length },
   });
 
-  const report = await scanLibrary(items, (done, total) => set({ scan: { done, total } }));
+  const report = await scanLibrary(all, (done, total) => set({ scan: { done, total } }));
   set({ report, status: 'ready', items: [...state.items] });
   persist();
 }
@@ -197,6 +227,9 @@ export const openEditor = (id: string) => set({ editorId: id, viewer: null });
 export const closeEditor = () => set({ editorId: null });
 export const openShare = (ids: string[]) => set({ shareIds: ids });
 export const closeShare = () => set({ shareIds: null });
+/** ask the current screen's grid to enter multi-select (menu → Select) */
+export const requestSelect = () => set({ selectRequest: state.selectRequest + 1 });
+export const requestSearch = (q: string | null) => set({ pendingSearch: q });
 
 /* ── library mutations ────────────────────────────────────────────────── */
 const mutate = (fn: () => void) => { fn(); set({ items: [...state.items] }); persist(); };
@@ -247,6 +280,7 @@ export function saveEditCopy(id: string, edits: EditState) {
     locked: false,
     edits,
     vision: undefined,
+    generated: true,
   };
   mutate(() => { state.items = [copy, ...state.items]; });
   toast('Saved a copy');
@@ -262,10 +296,39 @@ export function renameItem(id: string, title: string) {
 export function duplicateItem(id: string) {
   const src = state.items.find((i) => i.id === id);
   if (!src) return;
-  const copy: MediaItem = { ...src, id: `${src.id}-copy-${Date.now().toString(36)}`, title: `${src.title} (copy)`, takenAt: Date.now(), favorite: false, trashedAt: null, locked: false, hidden: false, vision: undefined };
+  const copy: MediaItem = { ...src, id: `${src.id}-copy-${Date.now().toString(36)}`, title: `${src.title} (copy)`, takenAt: Date.now(), favorite: false, trashedAt: null, locked: false, hidden: false, vision: undefined, generated: true, edits: structuredClone(src.edits) };
   mutate(() => { state.items = [copy, ...state.items]; });
   toast('Copied');
 }
+
+/**
+ * Add an item generated inside the app (collage, extracted video frame,
+ * edited export…). `src` must be a data: URL for the item to survive reloads.
+ */
+export function addGeneratedItem(partial: Omit<MediaItem, 'favorite' | 'trashedAt' | 'locked' | 'hidden' | 'edits'> & { edits?: EditState }): MediaItem {
+  const item: MediaItem = {
+    favorite: false,
+    trashedAt: null,
+    locked: false,
+    hidden: false,
+    edits: partial.edits ?? emptyEdit(),
+    ...partial,
+    generated: true,
+  } as MediaItem;
+  mutate(() => { state.items = [item, ...state.items]; });
+  return item;
+}
+
+/** Re-run the on-device scan (menu → Refresh / Scan). */
+export async function rescanLibrary() {
+  const items = state.items;
+  set({ status: 'scanning', scan: { done: 0, total: items.length } });
+  const report = await scanLibrary(items, (done, total) => set({ scan: { done, total } }));
+  set({ report, status: 'ready', items: [...state.items] });
+  persist();
+  toast(`Rescanned ${report.items} items on-device`);
+}
+
 export function createAlbum(name: string): string {
   const id = `album-${Date.now().toString(36)}`;
   set({ customAlbums: [...state.customAlbums, { id, name, itemIds: [], createdAt: Date.now() }] });
@@ -308,6 +371,10 @@ export function setTabOrder(order: TabId[]) {
 export function pushRecentSearch(q: string) {
   const next = [q, ...state.recentSearches.filter((s) => s !== q)].slice(0, 8);
   set({ recentSearches: next });
+  persist();
+}
+export function clearRecentSearches() {
+  set({ recentSearches: [] });
   persist();
 }
 export function setWallpaperSeed(seed: string | null) {

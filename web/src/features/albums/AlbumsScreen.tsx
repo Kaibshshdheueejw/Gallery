@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { createAlbum, deleteAlbum, navigate, openViewer, renameAlbum, renameFace, useApp, type AlbumRef } from '../../store';
+import { createAlbum, deleteAlbum, navigate, openViewer, renameAlbum, renameFace, rescanLibrary, setSettings, useApp, type AlbumRef } from '../../store';
 import {
   blurryItems, documents, duplicateItems, faceClusters, favorites, folders, hiddenItems,
   largeFiles, places, screenshots, trashedItems, videos, visibleItems, events, recentlyViewedItems,
@@ -8,6 +8,7 @@ import { PhotoGrid, Thumb } from '../../components/PhotoGrid';
 import { SelectionBar } from '../../components/SelectionBar';
 import { useSelection } from '../../components/useSelection';
 import { Dialog, EmptyState, IconButton, SectionTitle, Sheet } from '../../components/ui';
+import { ScreenMenu } from '../../components/ScreenMenu';
 import { AnimatedButton } from '../../components/glass';
 import { Icon } from '../../core/icons';
 import { translate } from '../../core/i18n';
@@ -70,7 +71,21 @@ export function AlbumsScreen() {
   const evts = useMemo(() => events(items), [items]);
   const hidden = useMemo(() => hiddenItems(items), [items]);
 
+  const setSettingsAlbums = (patch: Partial<typeof settings.albums>) => setSettings({ albums: { ...settings.albums, ...patch } });
   const open = (ref: AlbumRef) => navigate({ name: 'album', album: ref });
+
+  /* Settings → Albums: section visibility + album sorting */
+  const sortMode = settings.albums.sort;
+  const sortCards = <T extends { label?: string; id?: string; list?: MediaItem[]; items?: MediaItem[] }>(arr: T[]): T[] => {
+    if (sortMode === 'auto') return arr;
+    const label = (x: T) => (x.label ?? x.id ?? '').toLowerCase();
+    const list = (x: T) => x.list ?? x.items ?? [];
+    const copy = [...arr];
+    if (sortMode === 'name') copy.sort((a, b) => label(a).localeCompare(label(b)));
+    if (sortMode === 'count') copy.sort((a, b) => list(b).length - list(a).length);
+    if (sortMode === 'recent') copy.sort((a, b) => (list(b)[0]?.takenAt ?? 0) - (list(a)[0]?.takenAt ?? 0));
+    return copy;
+  };
 
   const SMART_CARDS: Array<{ id: string; icon: string; label: string; list: MediaItem[] }> = [
     { id: 'recents', icon: 'clock', label: t('recently_added'), list: smart.recents },
@@ -91,15 +106,26 @@ export function AlbumsScreen() {
           <span className="sub">{visibleItems(items).length} items · {formatBytes(visibleItems(items).reduce((s, i) => s + i.bytes, 0))}</span>
         </div>
         <div className="bar-actions">
-          <IconButton icon="plus" label={t('new_album')} onClick={() => setNewAlbumOpen(true)} />
-          <IconButton icon="eyeOff" label={t('hidden_album')} onClick={() => open({ type: 'smart', id: 'hidden', title: t('hidden_album') })} />
-          <IconButton icon="lock" label={t('locked_folder')} onClick={() => navigate({ name: 'locked' })} />
-          <IconButton icon="trash" label={t('trash')} onClick={() => navigate({ name: 'trash' })} />
+          <ScreenMenu
+            title={t('tab_albums')}
+            items={[
+              { icon: 'settings', label: t('settings'), onClick: () => navigate({ name: 'settings' }) },
+              { icon: 'plus', label: t('new_album'), onClick: () => setNewAlbumOpen(true) },
+              { icon: 'sort', label: 'Sort: auto', checked: sortMode === 'auto', onClick: () => setSettingsAlbums({ sort: 'auto' }) },
+              { icon: 'sort', label: 'Sort: name', checked: sortMode === 'name', onClick: () => setSettingsAlbums({ sort: 'name' }) },
+              { icon: 'sort', label: 'Sort: count', checked: sortMode === 'count', onClick: () => setSettingsAlbums({ sort: 'count' }) },
+              { icon: 'sort', label: 'Sort: recent', checked: sortMode === 'recent', onClick: () => setSettingsAlbums({ sort: 'recent' }) },
+              { icon: 'eyeOff', label: t('hidden_album'), onClick: () => open({ type: 'smart', id: 'hidden', title: t('hidden_album') }) },
+              { icon: 'lock', label: t('locked_folder'), onClick: () => navigate({ name: 'locked' }) },
+              { icon: 'trash', label: t('trash'), onClick: () => navigate({ name: 'trash' }) },
+              { icon: 'refresh', label: 'Refresh library', hint: 're-run the on-device scan', onClick: () => { rescanLibrary(); } },
+            ]}
+          />
         </div>
       </header>
 
       <div className="scroll-area padded">
-        {clusters.length > 0 && (
+        {settings.albums.showPeople && clusters.length > 0 && (
           <>
             <SectionTitle action={<span className="muted">{clusters.length}</span>}>{t('albums_people')}</SectionTitle>
             <div className="rail">
@@ -117,7 +143,7 @@ export function AlbumsScreen() {
           </>
         )}
 
-        {viewed.length > 0 && (
+        {settings.albums.showViewed && viewed.length > 0 && (
           <>
             <SectionTitle action={<button type="button" className="text-btn" onClick={() => open({ type: 'smart', id: 'viewed', title: t('recently_viewed') })}>{t('see_all')}</button>}>
               {t('recently_viewed')}
@@ -134,7 +160,7 @@ export function AlbumsScreen() {
 
         <SectionTitle>{t('albums_smart')}</SectionTitle>
         <div className="smart-grid">
-          {SMART_CARDS.map((card) => (
+          {sortCards(SMART_CARDS).map((card) => (
             <button key={card.id} type="button" className="smart-card pressable" onClick={() => open({ type: 'smart', id: card.id, title: card.label })}>
               <span className="collage">
                 {card.list.slice(0, 4).map((i) => <Thumb key={i.id} item={i} ratio="square" />)}
@@ -170,12 +196,12 @@ export function AlbumsScreen() {
           <>
             <SectionTitle>{t('events')}</SectionTitle>
             <div className="rail">
-              {evts.map((e) => (
-                <button key={e.id} type="button" className="event-card pressable" onClick={() => open({ type: 'event', id: e.id, title: e.id })}>
-                  <span className="cover">{e.items[0] && <Thumb item={e.items[0]} ratio="4:3" />}</span>
+              {sortCards(evts.map((e) => ({ ...e, label: e.id, list: e.items }))).map(({ id, items: eItems }) => (
+                <button key={id} type="button" className="event-card pressable" onClick={() => open({ type: 'event', id, title: id })}>
+                  <span className="cover">{eItems[0] && <Thumb item={eItems[0]} ratio="4:3" />}</span>
                   <span className="meta">
-                    <strong>{e.id}</strong>
-                    <em>{formatMonthYear(e.items[0].takenAt)} · {e.items.length}</em>
+                    <strong>{id}</strong>
+                    <em>{formatMonthYear(eItems[0].takenAt)} · {eItems.length}</em>
                   </span>
                 </button>
               ))}
@@ -183,27 +209,27 @@ export function AlbumsScreen() {
           </>
         )}
 
-        {locs.length > 0 && (
+        {settings.albums.showPlaces && locs.length > 0 && (
           <>
             <SectionTitle>{t('albums_places')}</SectionTitle>
             <div className="rail">
-              {locs.map((p) => (
-                <button key={p.id} type="button" className="event-card pressable" onClick={() => open({ type: 'place', id: p.id, title: p.id })}>
-                  <span className="cover">{p.items[0] && <Thumb item={p.items[0]} ratio="4:3" />}</span>
-                  <span className="meta"><strong><Icon name="mapPin" size={13} /> {p.id}</strong><em>{p.items.length}</em></span>
+              {sortCards(locs.map((p2) => ({ ...p2, label: p2.id, list: p2.items }))).map(({ id: pid, items: pItems }) => (
+                <button key={pid} type="button" className="event-card pressable" onClick={() => open({ type: 'place', id: pid, title: pid })}>
+                  <span className="cover">{pItems[0] && <Thumb item={pItems[0]} ratio="4:3" />}</span>
+                  <span className="meta"><strong><Icon name="mapPin" size={13} /> {pid}</strong><em>{pItems.length}</em></span>
                 </button>
               ))}
             </div>
           </>
         )}
 
-        <SectionTitle>{t('albums_folders')}</SectionTitle>
-        <div className="set-group glass glass-subtle folder-list">
-          {dirs.map((f) => (
-            <button key={f.id} type="button" className="row-btn pressable-row" onClick={() => open({ type: 'folder', id: f.id, title: f.id })}>
-              <Icon name={f.id === 'Screenshots' ? 'scanText' : f.id === 'Downloads' ? 'download' : 'folder'} size={19} />
-              <span className="grow">{f.id}</span>
-              <em>{f.items.length}</em>
+        {settings.albums.showFolders && <SectionTitle>{t('albums_folders')}</SectionTitle>}
+        <div className={`set-group glass glass-subtle folder-list${settings.albums.showFolders ? '' : ' folders-hidden'}`}>
+          {settings.albums.showFolders && sortCards(dirs.map((f) => ({ ...f, label: f.id, list: f.items }))).map(({ id: fid, items: fItems }) => (
+            <button key={fid} type="button" className="row-btn pressable-row" onClick={() => open({ type: 'folder', id: fid, title: fid })}>
+              <Icon name={fid === 'Screenshots' ? 'scanText' : fid === 'Downloads' ? 'download' : 'folder'} size={19} />
+              <span className="grow">{fid}</span>
+              <em>{fItems.length}</em>
               <Icon name="chevronRight" size={16} className="chev" />
             </button>
           ))}
@@ -212,8 +238,8 @@ export function AlbumsScreen() {
               <Icon name="eyeOff" size={19} /><span className="grow">{t('hidden_album')}</span><em>{hidden.length}</em><Icon name="chevronRight" size={16} className="chev" />
             </button>
           )}
-          <button type="button" className="row-btn pressable-row" onClick={() => navigate({ name: 'storage' })}>
-            <Icon name="storage" size={19} /><span className="grow">{t('storage_insights')}</span>
+          <button type="button" className="row-btn pressable-row" onClick={() => navigate({ name: 'settings', page: 'cleanup' })}>
+            <Icon name="storage" size={19} /><span className="grow">Storage & Cleanup</span>
             <em>{formatBytes(visibleItems(items).reduce((s, i) => s + i.bytes, 0))}</em>
             <Icon name="chevronRight" size={16} className="chev" />
           </button>

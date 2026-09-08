@@ -1,10 +1,11 @@
-import { useMemo, useRef, useState } from 'react';
-import { useApp, openViewer, setSettings, navigate } from '../../store';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useApp, openViewer, setSettings, navigate, rescanLibrary } from '../../store';
 import { visibleItems, byDay, byMonth } from '../../domain/usecases/library';
 import { PhotoGrid } from '../../components/PhotoGrid';
 import { SelectionBar } from '../../components/SelectionBar';
 import { useSelection } from '../../components/useSelection';
-import { IconButton, Sheet, EmptyState } from '../../components/ui';
+import { ScreenMenu } from '../../components/ScreenMenu';
+import { Sheet, EmptyState } from '../../components/ui';
 import { GlassSegmented, GlassSlider } from '../../components/glass';
 import { formatDayHeader, formatMonthYear, groupBy, startOfYear, formatBytes } from '../../core/utils';
 import { translate } from '../../core/i18n';
@@ -107,6 +108,26 @@ export function TimelineScreen() {
 
   const totalBytes = items.reduce((s, i) => s + i.bytes, 0);
 
+  /* menu asks the grid to enter selection mode (§6) */
+  useEffect(() => {
+    if (app.selectRequest > 0) selection.enter();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [app.selectRequest]);
+
+  const menuItems = [
+    { icon: 'settings', label: t('settings'), onClick: () => navigate({ name: 'settings' }) },
+    { icon: 'check', label: 'Select items', onClick: () => selection.enter() },
+    { icon: 'sort', label: 'Newest first', checked: settings.sortOrder === 'newest', onClick: () => setSettings({ sortOrder: 'newest' }) },
+    { icon: 'sort', label: 'Oldest first', checked: settings.sortOrder === 'oldest', onClick: () => setSettings({ sortOrder: 'oldest' }) },
+    { icon: 'grid', label: 'Group by day', checked: level >= 2, onClick: () => setSettings({ gridLevel: 3 }) },
+    { icon: 'grid', label: 'Group by month', checked: level === 1, onClick: () => setSettings({ gridLevel: 1 }) },
+    { icon: 'grid', label: 'Group by year', checked: level === 0, onClick: () => setSettings({ gridLevel: 0 }) },
+    { icon: 'zoomIn', label: 'Zoom in grid', onClick: () => changeLevel(1) },
+    { icon: 'zoomOut', label: 'Zoom out grid', onClick: () => changeLevel(-1) },
+    { icon: 'list', label: 'View options', onClick: () => setOptionsOpen(true) },
+    { icon: 'refresh', label: 'Refresh library', hint: 're-run the on-device scan', onClick: () => { rescanLibrary(); } },
+  ];
+
   return (
     <div className="screen">
       <header className="page-head">
@@ -115,9 +136,7 @@ export function TimelineScreen() {
           <span className="sub">{items.length} items · {formatBytes(totalBytes)}</span>
         </div>
         <div className="bar-actions">
-          <IconButton icon="zoomIn" label="Zoom in grid" onClick={() => changeLevel(1)} />
-          <IconButton icon="zoomOut" label="Zoom out grid" onClick={() => changeLevel(-1)} />
-          <IconButton icon="list" label="View options" onClick={() => setOptionsOpen(true)} />
+          <ScreenMenu items={menuItems} title={t('tab_timeline')} />
         </div>
       </header>
 

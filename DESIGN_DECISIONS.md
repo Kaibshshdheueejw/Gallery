@@ -168,3 +168,40 @@ one assumes the original plugin is viable.
 - Integration: `import → edit → export` flow test lands in Stage 1 (needs
   the iOS/Android device matrix) using `integration_test` on emulators via
   CI matrix where available.
+
+## 13. Refinement pass 2 — responsibility split & honest capabilities (web preview)
+
+- **Screen responsibilities (§ split):** For You = content discovery only (Stories, Memories,
+  On this day, Recently added, Featured moments, Smart suggestions — no header, no cleanup, no
+  storage, no people). Settings = configuration + Storage & Cleanup (liquid visualization,
+  analyzer, duplicates/blurry/large/old groups, recycle bin). Albums = organization (People
+  stays here). Every tab's top-right is a single hamburger opening a Liquid Glass popup whose
+  first entry is always Settings.
+- **EditState v2:** one serializable, non-destructive recipe per item (`v: 2`, migrated on
+  load). New: straighten, perspective, canvas pad, exposure/highlights/shadows/vibrance/tint/
+  hue/clarity/dehaze/denoise/grain, RGB + per-channel curves, 8-band HSL, shadow/midtone/
+  highlight colour balance, brush dabs (inpaint/red-eye/blur/mosaic), sticker & text layers
+  (with video timing t0/t1), video trim/speed/reverse/mute/volume/aspect/effect. The original
+  asset is never mutated; Save writes the recipe, Save-a-copy forks a generated item.
+- **Liquid storage (§4):** one canvas, stacked per-category bands drawn as two travelling sine
+  waves + wobble, meniscus stroke, bubbles, static specular. rAF pauses via IntersectionObserver,
+  `visibilitychange`, reduced-motion and the Animations setting. Detail mode hit-tests bands by
+  y-position. Deliberately *not* a spinner — it is a data visualization with ambient motion.
+- **Video pipeline:** `drawVideoFrame()` is a pure renderer shared by the viewer, the editor
+  preview and the WebM exporter (offscreen canvas → `captureStream` → `MediaRecorder`), so
+  exports are guaranteed to match playback. Frame extracts and collages become real library
+  items (data-URL, persisted); WebM/blob outputs are honest downloads (session-scoped).
+- **Gestures (§13):** left-half vertical = brightness (compositing filter; the native build
+  drives the real screen API), right-half vertical = WebAudio bed gain, horizontal = seek via
+  `timeOverride` (resumes from the seeked position). A tap toggles chrome; intent is decided
+  once per gesture at the 10 px threshold — no mid-gesture mode switching, no conflicts with
+  photo zoom/pan (photo and video paths are fully separate).
+- **Honest capability line:** real here — perceptual-hash duplicates, laplacian blur detection,
+  OCR-ish text hints, face grouping, histogram enhance, inpaint-style eraser (local blend,
+  labelled heuristic), red-eye neutralisation, mosaic, denoise, 2× interpolated upscale,
+  portrait depth blur. Disabled-until-native (shown, never faked): ML face enhance, background
+  removal cut-out, system notifications, real device media access.
+- **Animation budget (§19):** page transitions animate ONE keyed wrapper (fade+scale+slide);
+  grid entrance stagger is capped at the first 24 cells; nav icons replay keyframes by
+  remounting a small SVG subtree (compositor-only transforms); selection uses a 260 ms pop.
+  Thousands of items are never animated.

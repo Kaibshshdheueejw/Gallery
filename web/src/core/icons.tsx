@@ -91,6 +91,26 @@ const P: Record<string, JSX.Element> = {
   sort: (<><path d="M7 4.5v15M7 19.5l-3-3M7 19.5l3-3" /><path d="M17 19.5v-15M17 4.5l-3 3M17 4.5l3 3" /></>),
   pip: (<><rect x="3" y="5" width="18" height="14" rx="2.5" /><rect x="12" y="12" width="7" height="5" rx="1.2" fill="currentColor" stroke="none" /></>),
   contact: (<><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="10" r="3" /><path d="M6.5 18.5a6 6 0 0 1 11 0" /></>),
+  /* ── refinement additions ── */
+  menu: (<path d="M4 6.5h16M4 12h16M4 17.5h16" />),
+  sliders: (<><path d="M5 20v-6M5 10V4M12 20v-9M12 7V4M19 20v-4M19 12V4" /><circle cx="5" cy="12" r="2" /><circle cx="12" cy="9" r="2" /><circle cx="19" cy="14" r="2" /></>),
+  activity: (<path d="M3 12h4l2.5-7 4 14L16.5 12H21" />),
+  sticker: (<><circle cx="12" cy="12" r="8.8" /><circle cx="9" cy="10" r=".9" fill="currentColor" stroke="none" /><circle cx="15" cy="10" r=".9" fill="currentColor" stroke="none" /><path d="M8.5 14.2a4.6 4.6 0 0 0 7 0" /></>),
+  highlighter: (<><path d="M9 14l-2.5 2.5V20H10l6-6" /><path d="M13.5 4.5l6 6-7 7-6-6z" /><path d="M4 22h16" /></>),
+  mosaic: (<><rect x="4" y="4" width="7" height="7" rx="1" /><rect x="13" y="4" width="7" height="7" rx="1" /><rect x="4" y="13" width="7" height="7" rx="1" /><rect x="13" y="13" width="7" height="7" rx="1" /></>),
+  straighten: (<><path d="M3 17h18" /><path d="M6 17l4-9M18 17l-4-9" /><path d="M8 8h8" /><circle cx="12" cy="13.5" r="1.4" /></>),
+  perspective: (<path d="M7 4.5h10L20.5 19h-17z" />),
+  expand: (<><path d="M9 4.5H4.5V9M15 4.5h4.5V9M9 19.5H4.5V15M15 19.5h4.5V15" /><rect x="8.5" y="8.5" width="7" height="7" rx="1" /></>),
+  reverse: (<><path d="M4 9h13a3.5 3.5 0 0 1 0 7h-1.5" /><path d="M7 5.5L3.5 9 7 12.5" /><path d="M17 12.5L20.5 16 17 19.5" /></>),
+  subtitle: (<><rect x="3" y="5" width="18" height="14" rx="2.5" /><path d="M7 14.5h3.5M13.5 14.5H17M9.5 10.5h5" /></>),
+  collage: (<><rect x="3.5" y="3.5" width="10" height="17" rx="1.6" /><rect x="15.5" y="3.5" width="5" height="7.5" rx="1.4" /><rect x="15.5" y="13" width="5" height="7.5" rx="1.4" /></>),
+  frame: (<><rect x="3.5" y="3.5" width="17" height="17" rx="2" /><rect x="7" y="7" width="10" height="10" rx="1" /></>),
+  droplet: (<path d="M12 3.5s6 6.4 6 10.3a6 6 0 0 1-12 0C6 9.9 12 3.5 12 3.5z" />),
+  refresh: (<><path d="M20 12a8 8 0 1 1-2.3-5.6" /><path d="M20 3.5V7h-3.5" /></>),
+  story: (<><rect x="4" y="2.8" width="16" height="18.4" rx="3" /><path d="M10.2 8.8v6.4L15.4 12z" /></>),
+  split: (<><path d="M12 3.5v17" /><path d="M6 8l-2.5 2.5L6 13" /><path d="M18 8l2.5 2.5L18 13" /><path d="M3.5 10.5h6M14.5 10.5h6" /></>),
+  forward: (<><path d="M5 5l9 7-9 7z" /><path d="M17.5 5v14" /></>),
+  scan: (<><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16" /><path d="M4.5 12h15" /></>),
 };
 
 export type IconName = keyof typeof P;

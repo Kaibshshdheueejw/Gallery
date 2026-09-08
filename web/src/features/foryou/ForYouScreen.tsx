@@ -1,13 +1,18 @@
+/**
+ * For You — pure content discovery (§1). No header, no cleanup, no storage,
+ * no people (those live in Settings → Storage & Cleanup and Albums).
+ * Sections: Stories, Memories, On this day, Recently added, Featured moments,
+ * Smart suggestions — each individually toggleable in Settings.
+ */
 import { useEffect, useMemo, useState } from 'react';
-import { navigate, openViewer, toast, trashItems, useApp } from '../../store';
-import { memories, onThisDay, faceClusters, visibleItems } from '../../domain/usecases/library';
-import { storageReport } from '../../domain/usecases/storageInsights';
+import { navigate, openViewer, requestSearch, requestSelect, rescanLibrary, setTab, useApp } from '../../store';
+import { events, faceClusters, memories, onThisDay, visibleItems } from '../../domain/usecases/library';
 import { Thumb } from '../../components/PhotoGrid';
-import { AnimatedButton } from '../../components/glass';
-import { Donut, IconButton, ProgressBar, SectionTitle } from '../../components/ui';
+import { ScreenMenu } from '../../components/ScreenMenu';
+import { ProgressBar, SectionTitle } from '../../components/ui';
 import { Icon } from '../../core/icons';
 import { translate } from '../../core/i18n';
-import { formatBytes, formatMonthYear, relativeTime } from '../../core/utils';
+import { formatMonthYear, relativeTime } from '../../core/utils';
 import type { MediaItem } from '../../data/models';
 
 function MemorySlideshow({ items, onClose }: { items: MediaItem[]; onClose: () => void }) {
@@ -46,22 +51,79 @@ function memAspect(item: MediaItem | undefined): string {
   return '1 / 1';
 }
 
+/** honest, statistics-only "featured" score: sharp + well-exposed + interesting metadata */
+function featureScore(i: MediaItem): number {
+  const v = i.vision;
+  if (!v) return 0;
+  const sharp = Math.min(1, v.blur / 220);
+  const exposure = 1 - Math.abs(v.brightness - 0.52) * 1.6;
+  const meta = (i.place ? 0.18 : 0) + (i.event ? 0.14 : 0) + (i.favorite ? 0.1 : 0) + ((i.personIds?.length ?? 0) > 0 ? 0.08 : 0);
+  return sharp * 0.5 + Math.max(0, exposure) * 0.32 + meta;
+}
+
 export function ForYouScreen() {
   const app = useApp();
   const { settings, items, report } = app;
   const t = (k: string) => translate(settings.lang, k);
   const [playing, setPlaying] = useState<MediaItem[] | null>(null);
+  const fy = settings.foryou;
 
+  const vis = useMemo(() => visibleItems(items), [items]);
   const mems = useMemo(() => memories(items), [items]);
   const otd = useMemo(() => onThisDay(items), [items]);
-  const clusters = useMemo(() => (settings.ai.faces ? faceClusters(items, app.faceNames) : []), [items, app.faceNames, settings.ai.faces]);
-  const dupGroups = (settings.ai.duplicates ? report?.duplicates : undefined) ?? [];
-  const storage = useMemo(() => storageReport(items, dupGroups), [items, dupGroups]);
+  const stories = useMemo(() => {
+    const cutoff = Date.now() - 21 * 86_400_000;
+    return events(items)
+      .filter((e) => e.items.length >= 3 && e.items[0].takenAt >= cutoff)
+      .slice(0, 8);
+  }, [items]);
+  const recent = useMemo(() => [...vis].sort((a, b) => b.takenAt - a.takenAt).slice(0, 16), [vis]);
+  const featured = useMemo(() => {
+    // one per event/place where possible so the row stays varied
+    const ranked = [...vis].filter((i) => i.kind === 'photo').sort((a, b) => featureScore(b) - featureScore(a));
+    const seen = new Set<string>();
+    const out: MediaItem[] = [];
+    for (const i of ranked) {
+      const key = i.event ?? i.place ?? i.folder;
+      if (seen.has(key) && out.length < ranked.length - 1) continue;
+      seen.add(key);
+      out.push(i);
+      if (out.length >= 4) break;
+    }
+    return out;
+  }, [vis]);
 
-  const dupRemovable = dupGroups.flatMap((g) => g.slice(1));
-  const dupBytes = items.filter((i) => dupRemovable.includes(i.id)).reduce((s, i) => s + i.bytes, 0);
-  const blurryIds = (settings.ai.blur ? storage.cleanup.find((c) => c.id === 'blurry')?.itemIds : undefined) ?? [];
-  const showCleanup = settings.notifications.cleanup && (dupGroups.length > 0 || blurryIds.length > 0);
+  const suggestions = useMemo(() => {
+    const out: Array<{ id: string; icon: string; label: string; desc: string; go: () => void }> = [];
+    const dupGroups = report?.duplicates ?? [];
+    if (settings.ai.duplicates && dupGroups.length) {
+      out.push({
+        id: 'dups', icon: 'copy', label: `${dupGroups.length} duplicate group${dupGroups.length > 1 ? 's' : ''}`,
+        desc: 'Review & free space in Storage', go: () => navigate({ name: 'settings', page: 'cleanup' }),
+      });
+    }
+    const blurry = vis.filter((i) => i.vision?.tags.includes('blurry'));
+    if (settings.ai.blur && blurry.length) {
+      out.push({ id: 'blur', icon: 'eye', label: `${blurry.length} blurry shot${blurry.length > 1 ? 's' : ''}`, desc: 'Flagged by the sharpness model', go: () => navigate({ name: 'album', album: { type: 'smart', id: 'blurry', title: t('blurry') } }) });
+    }
+    const clusters = settings.ai.faces ? faceClusters(items, app.faceNames) : [];
+    const unnamed = clusters.filter((c) => !app.faceNames[c.id]);
+    if (unnamed.length) {
+      out.push({ id: 'people', icon: 'person', label: `${unnamed.length} people to name`, desc: 'Naming unlocks people search', go: () => setTab('albums') });
+    }
+    // tag-based discovery from the on-device scene tags
+    const tagCount = new Map<string, number>();
+    for (const i of vis) for (const tag of i.vision?.tags ?? []) {
+      if (!['blurry', 'duplicate', 'video', 'screenshot', 'text', 'document'].includes(tag)) tagCount.set(tag, (tagCount.get(tag) ?? 0) + 1);
+    }
+    const topTag = [...tagCount.entries()].sort((a, b) => b[1] - a[1])[0];
+    if (topTag && topTag[1] >= 3) {
+      out.push({ id: `tag-${topTag[0]}`, icon: 'search', label: `More “${topTag[0]}” moments`, desc: `${topTag[1]} photos match this scene`, go: () => { requestSearch(topTag[0]); setTab('search'); } });
+    }
+    out.push({ id: 'collage', icon: 'collage', label: 'Create a collage', desc: 'Pick photos in Timeline → Collage', go: () => { requestSelect(); setTab('timeline'); } });
+    return out.slice(0, 4);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [report, vis, items, app.faceNames, settings.ai]);
 
   if (app.status !== 'ready') {
     return (
@@ -74,21 +136,38 @@ export function ForYouScreen() {
     );
   }
 
+  const menuItems = [
+    { icon: 'settings', label: t('settings'), onClick: () => navigate({ name: 'settings' }) },
+    { icon: 'storage', label: 'Storage & Cleanup', onClick: () => navigate({ name: 'settings', page: 'cleanup' }) },
+    { icon: 'trash', label: t('trash'), onClick: () => navigate({ name: 'trash' }) },
+    { icon: 'refresh', label: 'Refresh library', hint: 're-run the on-device scan', onClick: () => { rescanLibrary(); } },
+  ];
+
   return (
-    <div className="screen">
-      <header className="page-head">
-        <div className="grow">
-          <h1>{new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</h1>
-          <span className="sub">{t('app_name')} · {visibleItems(items).length} items</span>
-        </div>
-        <div className="bar-actions">
-          <IconButton icon="storage" label={t('storage_insights')} onClick={() => navigate({ name: 'storage' })} />
-          <IconButton icon="settings" label={t('settings')} onClick={() => navigate({ name: 'settings' })} />
-        </div>
-      </header>
+    <div className="screen foryou-screen">
+      <div className="foryou-menu"><ScreenMenu items={menuItems} /></div>
 
       <div className="scroll-area padded">
-        {settings.notifications.memories && mems.length > 0 && (
+        <div className="scroll-pad small" />
+
+        {fy.stories && stories.length > 0 && (
+          <>
+            <SectionTitle>Stories</SectionTitle>
+            <div className="rail stories-rail">
+              {stories.map((s) => (
+                <button key={s.id} type="button" className="story-card pressable" onClick={() => setPlaying(s.items)}>
+                  <span className="story-ring">
+                    <span className="story-media"><Thumb item={s.items[0]} ratio="square" /></span>
+                  </span>
+                  <strong>{s.id}</strong>
+                  <em>{s.items.length} items · {relativeTime(s.items[0].takenAt)}</em>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {fy.memories && settings.notifications.memories && mems.length > 0 && (
           <>
             <SectionTitle>{t('memories')}</SectionTitle>
             <div className="mem-rail">
@@ -125,7 +204,7 @@ export function ForYouScreen() {
           </>
         )}
 
-        {otd.length > 0 && (
+        {fy.onThisDay && otd.length > 0 && (
           <>
             <SectionTitle>{t('on_this_day')}</SectionTitle>
             <div className="rail">
@@ -139,71 +218,54 @@ export function ForYouScreen() {
           </>
         )}
 
-        {showCleanup && (
+        {fy.recently && recent.length > 0 && (
           <>
-            <SectionTitle>{t('cleanup')}</SectionTitle>
-            <div className="card-list">
-              {dupGroups.length > 0 && (
-                <div className="info-card glass glass-subtle">
-                  <span className="card-icon"><Icon name="copy" size={20} /></span>
-                  <div className="grow">
-                    <strong>{dupGroups.length} duplicate group{dupGroups.length > 1 ? 's' : ''}</strong>
-                    <em>{dupRemovable.length} extra copies · {formatBytes(dupBytes)} recoverable</em>
-                    <div className="card-actions">
-                      <AnimatedButton kind="ghost" onClick={() => navigate({ name: 'album', album: { type: 'smart', id: 'duplicates', title: t('duplicates') } })}>Review</AnimatedButton>
-                      <AnimatedButton kind="danger" icon="broom" onClick={() => { trashItems(dupRemovable); toast(`Cleaned ${dupRemovable.length} duplicates`); }}>Clean</AnimatedButton>
-                    </div>
-                  </div>
-                </div>
-              )}
-              {blurryIds.length > 0 && (
-                <div className="info-card glass glass-subtle">
-                  <span className="card-icon"><Icon name="eye" size={20} /></span>
-                  <div className="grow">
-                    <strong>{blurryIds.length} blurry shot{blurryIds.length > 1 ? 's' : ''}</strong>
-                    <em>flagged by the on-device sharpness model (laplacian variance)</em>
-                    <div className="card-actions">
-                      <AnimatedButton kind="ghost" onClick={() => navigate({ name: 'album', album: { type: 'smart', id: 'blurry', title: t('blurry') } })}>Review</AnimatedButton>
-                      <AnimatedButton kind="danger" icon="trash" onClick={() => trashItems(blurryIds)}>{t('delete')}</AnimatedButton>
-                    </div>
-                  </div>
-                </div>
-              )}
+            <SectionTitle action={<button type="button" className="text-btn" onClick={() => setTab('timeline')}>See all <Icon name="chevronRight" size={14} /></button>}>
+              Recently added
+            </SectionTitle>
+            <div className="rail">
+              {recent.map((i, idx) => (
+                <button key={i.id} type="button" className="strip-card pressable" onClick={() => openViewer(recent.map((x) => x.id), idx)}>
+                  <Thumb item={i} ratio="square" />
+                  <em>{relativeTime(i.takenAt)}</em>
+                </button>
+              ))}
             </div>
           </>
         )}
 
-        <SectionTitle action={<button type="button" className="text-btn" onClick={() => navigate({ name: 'storage' })}>{t('storage_insights')} <Icon name="chevronRight" size={14} /></button>}>
-          Space
-        </SectionTitle>
-        <div className="storage-summary glass glass-subtle">
-          <Donut slices={storage.slices.map((s) => ({ color: s.color, fraction: s.bytes / storage.total }))} />
-          <div className="legend grow">
-            {storage.slices.map((s) => (
-              <div key={s.id} className="legend-row">
-                <i style={{ background: s.color }} />
-                <span className="grow">{s.label}</span>
-                <em>{s.count}</em>
-                <strong>{formatBytes(s.bytes)}</strong>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {clusters.length > 0 && (
+        {fy.featured && featured.length > 0 && (
           <>
-            <SectionTitle>{t('albums_people')}</SectionTitle>
-            <div className="rail">
-              {clusters.map((c) => {
-                const first = items.find((i) => i.id === c.itemIds[0]);
-                return (
-                  <button key={c.id} type="button" className="person-card pressable" onClick={() => navigate({ name: 'album', album: { type: 'person', id: c.id, title: c.name } })}>
-                    <span className="avatar">{first && <Thumb item={first} ratio="square" />}</span>
-                    <strong>{c.name}</strong>
-                    <em>{c.itemIds.length}</em>
-                  </button>
-                );
-              })}
+            <SectionTitle>Featured moments</SectionTitle>
+            <div className="featured-grid">
+              {featured.map((f, idx) => (
+                <button key={f.id} type="button" className="featured-card pressable" onClick={() => openViewer([f.id], 0)} style={{ animationDelay: `${idx * 45}ms` }}>
+                  <img src={f.thumb ?? f.src} alt={f.title} loading="lazy" decoding="async" />
+                  <span className="feat-scrim" />
+                  <span className="feat-txt">
+                    <strong>{f.event ?? f.place ?? 'Highlight'}</strong>
+                    <em>{f.place ?? formatMonthYear(f.takenAt)} · sharpest & best-exposed</em>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {fy.suggestions && suggestions.length > 0 && (
+          <>
+            <SectionTitle>Smart suggestions</SectionTitle>
+            <div className="card-list">
+              {suggestions.map((s) => (
+                <button key={s.id} type="button" className="info-card glass glass-subtle pressable-row suggest-card" onClick={s.go}>
+                  <span className="card-icon"><Icon name={s.icon} size={20} /></span>
+                  <span className="grow">
+                    <strong>{s.label}</strong>
+                    <em>{s.desc}</em>
+                  </span>
+                  <Icon name="chevronRight" size={16} className="chev" />
+                </button>
+              ))}
             </div>
           </>
         )}

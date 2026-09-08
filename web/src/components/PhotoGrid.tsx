@@ -85,8 +85,8 @@ export function PhotoGrid({ items, cols, ratio, selection, onOpen, onToggle, onL
       {items.map((item, index) => (
         <div
           key={item.id}
-          className={`cell${selection?.has(item.id) ? ' selected' : ''}${selecting ? ' selecting' : ''}`}
-          style={ratio === 'auto' ? { breakInside: 'avoid', marginBottom: gap } : undefined}
+          className={`cell${selection?.has(item.id) ? ' selected' : ''}${selecting ? ' selecting' : ''}${index < 24 ? ' tile-in' : ''}`}
+          style={{ ...(ratio === 'auto' ? { breakInside: 'avoid', marginBottom: gap } : null), '--i': Math.min(index, 23) } as React.CSSProperties}
           onClick={(e) => handleClick(index, item.id, e.currentTarget)}
           onPointerDown={(e) => startPress(e, item.id)}
           onPointerMove={movePress}

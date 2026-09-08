@@ -1,15 +1,28 @@
+/**
+ * MediaViewer — shared-element open/close, pinch/double-tap zoom for photos,
+ * and the advanced video player (§12–§13):
+ *   play/pause · seek timeline · speed menu · loop · mute/volume · fullscreen
+ *   rotation · picture-in-picture · timed text overlays (CC) · ±frame seek
+ *   Google-Files-style gestures: left-half vertical swipe = brightness,
+ *   right-half vertical swipe = volume, horizontal swipe = seek — with the
+ *   Liquid-Glass GestureIndicator HUD. No gesture conflicts: a tap toggles
+ *   chrome, a swipe only seeks when horizontal intent dominates.
+ */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   addToAlbum, closeViewer, duplicateItem, openEditor, openShare, openViewer, renameItem,
   saveEdits, setFavorite, setHidden, setLocked, toast, trashItems, useApp,
 } from '../../store';
-import { renderEdited, cssFilterFor } from '../editor/render';
+import { renderEdited } from '../editor/render';
 import { loadImage } from '../../ml/pipelines';
 import { IconButton, Sheet, Dialog } from '../../components/ui';
 import { AnimatedButton } from '../../components/glass';
+import { GlassPopupMenu, usePopupAnchor, type PopupMenuItem } from '../../components/GlassPopupMenu';
+import { GestureIndicator, type GestureState } from '../../components/GestureIndicator';
+import { VideoStage } from './VideoStage';
 import { Icon } from '../../core/icons';
 import { translate } from '../../core/i18n';
-import { formatBytes, formatDateLong, formatDuration, formatTime, relativeTime } from '../../core/utils';
+import { clamp, formatBytes, formatDateLong, formatDuration, formatTime, relativeTime } from '../../core/utils';
 import type { MediaItem } from '../../data/models';
 
 /* ── canvas stage for edited photos / screenshots ─────────────────────── */
@@ -54,97 +67,7 @@ function PhotoStage({ item, showFaces }: { item: MediaItem; showFaces: boolean }
   );
 }
 
-/* ── simulated video playback (Ken-Burns motion + ambient audio) ──────── */
-function VideoStage({ item, playing, speed, muted, trim, loop, onTime, onEnd }: {
-  item: MediaItem; playing: boolean; speed: number; muted: boolean;
-  trim: { start: number; end: number }; loop: boolean; onTime: (t: number) => void; onEnd: () => void;
-}) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const imgRef = useRef<HTMLImageElement | null>(null);
-  const timeRef = useRef(trim.start);
-  const audioRef = useRef<{ ctx: AudioContext; gain: GainNode } | null>(null);
-
-  useEffect(() => { loadImage(item.src).then((img) => { imgRef.current = img; }); }, [item]);
-
-  useEffect(() => {
-    if (!playing) { audioRef.current?.ctx.suspend(); return; }
-    if (!audioRef.current) {
-      const ctx = new AudioContext();
-      const seconds = 2;
-      const buffer = ctx.createBuffer(1, ctx.sampleRate * seconds, ctx.sampleRate);
-      const ch = buffer.getChannelData(0);
-      let last = 0;
-      for (let i = 0; i < ch.length; i++) {
-        const white = Math.random() * 2 - 1;
-        last = (last + 0.02 * white) / 1.02;
-        ch[i] = last * 3.2;
-      }
-      const src = ctx.createBufferSource();
-      src.buffer = buffer; src.loop = true;
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'lowpass'; filter.frequency.value = 900;
-      const gain = ctx.createGain();
-      gain.gain.value = muted ? 0 : 0.12;
-      src.connect(filter).connect(gain).connect(ctx.destination);
-      src.start();
-      audioRef.current = { ctx, gain };
-    }
-    audioRef.current.ctx.resume();
-    audioRef.current.gain.gain.value = muted ? 0 : 0.12;
-    return () => { audioRef.current?.ctx.suspend(); };
-  }, [playing, muted]);
-
-  useEffect(() => {
-    let raf = 0;
-    let prev = performance.now();
-    const loopFn = (now: number) => {
-      const dt = (now - prev) / 1000;
-      prev = now;
-      if (playing) {
-        timeRef.current += dt * speed;
-        if (timeRef.current > trim.end) {
-          if (loop) timeRef.current = trim.start;
-          else { timeRef.current = trim.end; onEnd(); }
-        }
-        onTime(timeRef.current);
-      }
-      const canvas = canvasRef.current;
-      const img = imgRef.current;
-      if (canvas && img) {
-        const ctx = canvas.getContext('2d')!;
-        const w = canvas.width, h = canvas.height;
-        const span = Math.max(0.001, trim.end - trim.start);
-        const p = Math.max(0, Math.min(1, (timeRef.current - trim.start) / span));
-        const motion = item.video?.motion ?? 'zoomIn';
-        ctx.clearRect(0, 0, w, h);
-        ctx.save();
-        const scaleBase = 1.06;
-        let scale = scaleBase, tx = 0, ty = 0;
-        switch (motion) {
-          case 'zoomIn': scale = scaleBase + p * 0.22; break;
-          case 'zoomOut': scale = scaleBase + 0.22 - p * 0.22; break;
-          case 'panL': tx = (0.5 - p) * 0.16; break;
-          case 'panR': tx = (p - 0.5) * 0.16; break;
-          case 'panU': ty = (p - 0.5) * 0.16; break;
-          case 'panD': ty = (0.5 - p) * 0.16; break;
-        }
-        ctx.translate(w / 2 + tx * w, h / 2 + ty * h);
-        ctx.scale(scale, scale);
-        const ar = img.naturalWidth / img.naturalHeight;
-        let dw = w, dh = h;
-        if (ar > w / h) dw = h * ar; else dh = w / ar;
-        ctx.filter = cssFilterFor(item) || 'none';
-        ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
-        ctx.restore();
-      }
-      raf = requestAnimationFrame(loopFn);
-    };
-    raf = requestAnimationFrame(loopFn);
-    return () => cancelAnimationFrame(raf);
-  }, [playing, speed, trim, item, onTime, onEnd, loop]);
-
-  return <canvas ref={canvasRef} width={1280} height={720} className="video-canvas" />;
-}
+const SPEEDS = [0.25, 0.5, 1, 1.5, 2, 3];
 
 /* ── viewer shell ─────────────────────────────────────────────────────── */
 export function Viewer() {
@@ -165,81 +88,151 @@ export function Viewer() {
   const [showFaces, setShowFaces] = useState(false);
   const [playing, setPlaying] = useState(settings.autoplay);
   const [muted, setMuted] = useState(true);
-  const [speed, setSpeed] = useState(1);
+  const [volume, setVolume] = useState(70);
+  const [brightness, setBrightness] = useState(1);
+  const [speed, setSpeed] = useState(settings.videoEdit.defaultSpeed ?? 1);
+  const [loopOn, setLoopOn] = useState(settings.loop);
+  const [ccOn, setCcOn] = useState(true);
+  const [rot, setRot] = useState(0);
   const [time, setTime] = useState(0);
+  const [scrub, setScrub] = useState<number | null>(null);
   const [trimEdit, setTrimEdit] = useState(false);
+  const [gesture, setGesture] = useState<GestureState | null>(null);
   const [flip, setFlip] = useState<'origin' | 'full' | 'back'>(viewer?.origin ? 'origin' : 'full');
   const [layerOn, setLayerOn] = useState(Boolean(viewer?.origin));
   const [backAtFull, setBackAtFull] = useState(false);
+  const [stageBox, setStageBox] = useState({ w: 1, h: 1 });
   const drag = useRef<{ x: number; y: number; panX: number; panY: number; moved: boolean } | null>(null);
+  const vDrag = useRef<{ x: number; y: number; moved: boolean; kind: 'none' | 'seek' | 'bright' | 'vol'; startVal: number; startTime: number } | null>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const canvasEl = useRef<HTMLCanvasElement | null>(null);
+  const pipVideo = useRef<HTMLVideoElement>(null);
+  const speedMenu = usePopupAnchor();
+  const timeRef = useRef(0);
 
-  const resetView = useCallback(() => { setZoom(1); setPan({ x: 0, y: 0 }); }, []);
+  const resetView = useCallback(() => { setZoom(1); setPan({ x: 0, y: 0 }); setRot(0); setBrightness(1); }, []);
+  useEffect(() => { resetView(); setTime(0); setScrub(null); setPlaying(settings.autoplay); }, [item?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { resetView(); setChrome(true); setPlaying(settings.autoplay); setTime(item?.edits.trim?.start ?? 0); }, [viewer?.index, resetView, item?.id, settings.autoplay]);
-
-  // shared-element entry: thumbnail rect → fullscreen
   useEffect(() => {
-    if (!viewer?.origin) { setFlip('full'); return; }
     const id = requestAnimationFrame(() => requestAnimationFrame(() => setFlip('full')));
     return () => cancelAnimationFrame(id);
-  }, [viewer?.origin]);
-  useEffect(() => {
-    if (viewer?.closing) setFlip('back');
-  }, [viewer?.closing]);
-
-  // keep the transition layer alive during the crossfade, then drop it
+  }, []);
   useEffect(() => {
     if (flip === 'full') {
       const id = setTimeout(() => setLayerOn(false), 240);
       return () => clearTimeout(id);
     }
-    if (flip === 'back') {
-      setLayerOn(true);
-      setBackAtFull(true);
+    return undefined;
+  }, [flip]);
+  useEffect(() => {
+    if (viewer?.closing) {
       const id = requestAnimationFrame(() => requestAnimationFrame(() => setBackAtFull(false)));
       return () => cancelAnimationFrame(id);
     }
     return undefined;
-  }, [flip]);
+  }, [viewer?.closing]);
 
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      if (!viewer) return;
       if (e.key === 'Escape') closeViewer();
-      if (e.key === 'ArrowRight') openNext(1);
-      if (e.key === 'ArrowLeft') openNext(-1);
-      if (e.key === ' ') { e.preventDefault(); setPlaying((p) => !p); }
+      else if (e.key === 'ArrowRight') go(1);
+      else if (e.key === 'ArrowLeft') go(-1);
+      else if (e.key === ' ' && item?.kind === 'video') { e.preventDefault(); setPlaying((p) => !p); }
     };
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
   });
 
-  const openNext = (delta: number) => {
+  /* measure the stage for rotation fit */
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      const r = el.getBoundingClientRect();
+      setStageBox({ w: r.width || 1, h: r.height || 1 });
+    });
+    ro.observe(el);
+    const r = el.getBoundingClientRect();
+    setStageBox({ w: r.width || 1, h: r.height || 1 });
+    return () => ro.disconnect();
+  }, [item?.id]);
+
+  const go = (delta: number) => {
     if (!viewer) return;
     const next = viewer.index + delta;
-    if (next >= 0 && next < viewer.ids.length) {
-      setFlip('full');
-      openViewer(viewer.ids, next);
-    }
+    if (next < 0 || next >= viewer.ids.length) return;
+    openViewer(viewer.ids, next);
   };
-
-  const go = (delta: number) => openNext(delta);
 
   const onWheel = (e: React.WheelEvent) => {
-    setZoom((z) => Math.max(1, Math.min(6, z - e.deltaY * 0.0022)));
+    if (item?.kind === 'video') return;
+    setZoom((z) => clamp(z * (e.deltaY < 0 ? 1.12 : 0.9), 1, 6));
   };
+
+  /* ── pointer handling: photos zoom/pan/swipe; videos Files-style gestures ── */
   const onPointerDown = (e: React.PointerEvent) => {
-    drag.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y, moved: false };
+    if (item?.kind === 'video') {
+      vDrag.current = { x: e.clientX, y: e.clientY, moved: false, kind: 'none', startVal: 0, startTime: timeRef.current };
+    } else {
+      drag.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y, moved: false };
+    }
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
+
   const onPointerMove = (e: React.PointerEvent) => {
+    if (item?.kind === 'video') {
+      const d = vDrag.current;
+      if (!d || !viewer) return;
+      const dx = e.clientX - d.x, dy = e.clientY - d.y;
+      const rect = stageRef.current?.getBoundingClientRect();
+      const w = rect?.width ?? 1, h = rect?.height ?? 1;
+      if (!d.moved && Math.hypot(dx, dy) < 10) return;
+      if (!d.moved) {
+        d.moved = true;
+        const g = settings.videoEdit.gestures;
+        if (Math.abs(dx) > Math.abs(dy) && g.seek) { d.kind = 'seek'; d.startTime = timeRef.current; }
+        else if (dy !== 0 && g.brightness && e.clientX < (rect?.left ?? 0) + w / 2) { d.kind = 'bright'; d.startVal = brightness; }
+        else if (dy !== 0 && g.volume) { d.kind = 'vol'; d.startVal = volume; }
+        else { d.kind = 'none'; return; }
+      }
+      if (d.kind === 'seek') {
+        const dur = item?.video?.duration ?? 4;
+        const tr = item?.edits.trim ?? { start: 0, end: dur };
+        const delta = (dx / w) * 60; // full-width swipe ≈ ±60 s
+        const tt = clamp(d.startTime + delta, tr.start, tr.end);
+        setScrub(tt);
+        timeRef.current = tt;
+        setTime(tt);
+        setGesture({ kind: 'seek', value: (tt - tr.start) / Math.max(0.001, tr.end - tr.start), label: `${delta >= 0 ? '+' : ''}${delta.toFixed(0)}s` });
+      } else if (d.kind === 'bright') {
+        const b = clamp(d.startVal - (dy / h) * 1.6, 0.3, 1.7);
+        setBrightness(b);
+        setGesture({ kind: 'brightness', value: (b - 0.3) / 1.4 });
+      } else if (d.kind === 'vol') {
+        const v = clamp(Math.round(d.startVal - (dy / h) * 130), 0, 100);
+        setVolume(v);
+        setMuted(v === 0);
+        setGesture({ kind: 'volume', value: v / 100 });
+      }
+      return;
+    }
     if (!drag.current) return;
     const dx = e.clientX - drag.current.x;
     const dy = e.clientY - drag.current.y;
     if (Math.hypot(dx, dy) > 6) drag.current.moved = true;
     if (zoom > 1) setPan({ x: drag.current.panX + dx, y: drag.current.panY + dy });
   };
+
   const onPointerUp = (e: React.PointerEvent) => {
+    if (item?.kind === 'video') {
+      const d = vDrag.current;
+      vDrag.current = null;
+      setGesture(null);
+      if (!d) return;
+      if (!d.moved) { setChrome((c) => !c); return; }
+      if (d.kind === 'seek') setScrub(null); // resume from the seeked position
+      return;
+    }
     const d = drag.current;
     drag.current = null;
     if (!d || !viewer) return;
@@ -247,10 +240,58 @@ export function Viewer() {
     if (!d.moved) { setChrome((c) => !c); return; }
     if (zoom === 1 && Math.abs(dx) > 60) go(dx < 0 ? 1 : -1);
   };
+
   const doubleClick = (e: React.MouseEvent) => {
+    if (item?.kind === 'video') { setPlaying((p) => !p); return; }
     if (zoom > 1) resetView();
     else { setZoom(2.6); setPan({ x: (window.innerWidth / 2 - e.clientX) * 0.8, y: (window.innerHeight / 2 - e.clientY) * 0.8 }); }
   };
+
+  /* ── player helpers ── */
+  const stepFrame = (dir: 1 | -1) => {
+    const stepSize = settings.videoEdit.frameStep ?? 1 / 30;
+    setPlaying(false);
+    const dur = item?.video?.duration ?? 4;
+    const tr = item?.edits.trim ?? { start: 0, end: dur };
+    const tt = clamp((scrub ?? timeRef.current) + dir * stepSize, tr.start, tr.end);
+    setScrub(tt);
+    timeRef.current = tt;
+    setTime(tt);
+  };
+
+  const togglePip = async () => {
+    const canvas = canvasEl.current;
+    if (!canvas) return;
+    if (!('pictureInPictureEnabled' in document) || !document.pictureInPictureEnabled) {
+      toast('Picture-in-picture is not available in this browser');
+      return;
+    }
+    try {
+      if (document.pictureInPictureElement) { await document.exitPictureInPicture(); return; }
+      const v = pipVideo.current!;
+      if (v.srcObject !== canvas.captureStream(30)) {
+        v.srcObject = canvas.captureStream(30);
+        v.muted = true;
+        await v.play();
+      }
+      await v.requestPictureInPicture();
+      toast('Playing in picture-in-picture');
+    } catch {
+      toast('Picture-in-picture was blocked by the browser');
+    }
+  };
+
+  const toggleFullscreen = () => {
+    const el = document.documentElement;
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => undefined);
+    else el.requestFullscreen?.().catch(() => toast('Fullscreen was blocked by the browser'));
+  };
+
+  const speedItems: PopupMenuItem[] = SPEEDS.map((s) => ({
+    label: `${s}×`,
+    checked: speed === s,
+    onClick: () => { setSpeed(s); toast(`Playback speed ${s}×`); },
+  }));
 
   const layerStyle = useMemo((): React.CSSProperties | null => {
     if (!viewer?.origin || !item) return null;
@@ -273,22 +314,66 @@ export function Viewer() {
   const names = (item.personIds ?? []).map((pid) => app.faceNames[pid] ?? pid);
   const sceneTags = (item.vision?.tags ?? []).filter((tag) => settings.ai.scenes || ['blurry', 'duplicate', 'video', 'screenshot', 'text', 'document'].includes(tag));
 
+  /* rotation-fit sizing for the video canvas */
+  let videoFit: React.CSSProperties = {};
+  if (isVideo) {
+    const { w: sw, h: sh } = stageBox;
+    let bw = sw * 0.96, bh = bw * 9 / 16;
+    if (bh > sh * 0.92) { bh = sh * 0.92; bw = bh * 16 / 9; }
+    if (rot % 2 === 1) {
+      const scale = Math.min(1, sw / bh, sh / bw);
+      videoFit = { width: bw, height: bh, transform: `rotate(${rot * 90}deg) scale(${scale.toFixed(3)})` };
+    } else {
+      videoFit = { width: bw, height: bh, transform: rot ? `rotate(${rot * 90}deg)` : undefined };
+    }
+  }
+
+  /* CC = timed text overlays (the caption mechanism of the video editor) */
+  const stageEdits = isVideo && !ccOn ? { ...item.edits, texts: [] } : item.edits;
+
   return (
     <div className={`viewer${viewer.closing ? ' closing' : ''}`}>
       <div
         className="viewer-stage"
+        ref={stageRef}
         onWheel={onWheel}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onDoubleClick={doubleClick}
       >
-        <div className="zoom-wrap" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, opacity: flip === 'origin' ? 0 : 1, transition: 'opacity 180ms' }}>
-          {isVideo
-            ? <VideoStage item={item} playing={playing} speed={speed} muted={muted} trim={trim} loop={settings.loop} onTime={setTime} onEnd={() => setPlaying(false)} />
-            : <PhotoStage item={item} showFaces={showFaces} />}
-        </div>
+        {isVideo ? (
+          <div className="video-fit" style={videoFit}>
+            <VideoStage
+              item={item}
+              edits={stageEdits}
+              playing={playing && scrub === null}
+              playerSpeed={speed}
+              muted={muted}
+              volume={volume}
+              loop={loopOn}
+              brightness={brightness}
+              timeOverride={scrub}
+              onTime={(tt) => { timeRef.current = tt; if (Math.abs(tt - time) > 0.045) setTime(tt); }}
+              onEnd={() => { if (!loopOn) setPlaying(false); }}
+              onCanvasReady={(c) => { canvasEl.current = c; }}
+            />
+          </div>
+        ) : (
+          <div className="zoom-wrap" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, opacity: flip === 'origin' ? 0 : 1, transition: 'opacity 180ms' }}>
+            <PhotoStage item={item} showFaces={showFaces} />
+          </div>
+        )}
       </div>
+
+      {isVideo && !chrome && (
+        <button type="button" className="video-center-play" aria-label={playing ? 'Pause' : 'Play'} onClick={() => setPlaying((p) => !p)}>
+          <Icon name={playing ? 'pause' : 'play'} size={30} filled />
+        </button>
+      )}
+
+      <GestureIndicator state={gesture} />
+      <video ref={pipVideo} className="pip-source" muted playsInline aria-hidden="true" />
 
       {layerOn && layerStyle && (
         <img className="viewer-transition-img" src={item.thumb ?? item.src} alt="" style={layerStyle} />
@@ -300,6 +385,7 @@ export function Viewer() {
           <strong>{item.title}</strong>
           <span>{formatDateLong(item.takenAt)} · {formatTime(item.takenAt)}</span>
         </div>
+        {isVideo && <IconButton icon="expand" label="Fullscreen" onClick={toggleFullscreen} />}
         <IconButton icon="heart" label={t('favorite')} filled={item.favorite} onClick={() => setFavorite([item.id], !item.favorite)} />
         <IconButton icon="info" label={t('info')} onClick={() => setInfoOpen(true)} />
         <IconButton icon="more" label="More" onClick={() => setMoreOpen(true)} />
@@ -308,48 +394,62 @@ export function Viewer() {
       {isVideo && (
         <div className={`video-controls${chrome ? '' : ' hide'}`}>
           <div className="vc-row">
-            <IconButton icon={playing ? 'pause' : 'play'} label={playing ? 'Pause' : 'Play'} filled={!playing} onClick={() => setPlaying((p) => !p)} />
-            <span className="time">{formatDuration(time - trim.start)} / {formatDuration(trim.end - trim.start)}</span>
+            <IconButton icon={playing && scrub === null ? 'pause' : 'play'} label={playing ? 'Pause' : 'Play'} filled={!playing} onClick={() => { setScrub(null); setPlaying((p) => !p); }} />
+            <span className="time">{formatDuration(Math.max(0, (scrub ?? time) - trim.start))} / {formatDuration(trim.end - trim.start)}</span>
             <input
               type="range"
               className="grow"
               min={trim.start}
               max={trim.end}
               step={0.05}
-              value={Math.min(Math.max(time, trim.start), trim.end)}
-              onChange={(e) => setTime(Number(e.target.value))}
+              value={Math.min(Math.max(scrub ?? time, trim.start), trim.end)}
+              onChange={(e) => { const tt = Number(e.target.value); setScrub(tt); timeRef.current = tt; setTime(tt); }}
+              onPointerUp={() => setScrub(null)}
+              onKeyUp={() => setScrub(null)}
+              onBlur={() => setScrub(null)}
+              aria-label="Seek"
             />
             <IconButton icon={muted ? 'volumeOff' : 'volume'} label={muted ? 'Unmute' : 'Mute'} onClick={() => setMuted((m) => !m)} />
-            <button type="button" className="speed-pill" onClick={() => setSpeed((s) => (s === 1 ? 1.5 : s === 1.5 ? 2 : s === 2 ? 0.5 : s === 0.5 ? 0.25 : 1))}>
+            <button ref={speedMenu.btnRef} type="button" className="speed-pill" onClick={speedMenu.toggle} aria-label="Playback speed">
               {speed}×
             </button>
           </div>
-          <div className="vc-row">
-            <button type="button" className={`ghost-btn${trimEdit ? ' on' : ''}`} onClick={() => setTrimEdit((v) => !v)}>
+          <div className="vc-row vc-row2">
+            <IconButton icon="back" label="Step back one frame" size={18} className="flip-x" onClick={() => stepFrame(-1)} />
+            <IconButton icon="forward" label="Step forward one frame" size={18} onClick={() => stepFrame(1)} />
+            <IconButton icon="restore" label={loopOn ? 'Loop on' : 'Loop off'} active={loopOn} size={18} onClick={() => setLoopOn((l) => !l)} />
+            <IconButton icon="subtitle" label="Timed text overlays (CC)" active={ccOn} size={18} onClick={() => setCcOn((c) => !c)} />
+            <IconButton icon="pip" label="Picture-in-picture" size={18} onClick={togglePip} />
+            <IconButton icon="rotate" label="Rotate 90°" size={18} onClick={() => setRot((r) => (r + 1) % 4)} />
+            <label className="vol-slider" title="Volume">
+              <input type="range" min={0} max={100} value={volume} onChange={(e) => { setVolume(Number(e.target.value)); setMuted(Number(e.target.value) === 0); }} aria-label="Volume" />
+            </label>
+            <button type="button" className={`ghost-btn vc-trim${trimEdit ? ' on' : ''}`} onClick={() => setTrimEdit((v) => !v)}>
               <Icon name="scissors" size={14} /> Trim
             </button>
-            {trimEdit && (
-              <>
-                <label className="trim-field">In {formatDuration(trim.start)}
-                  <input type="range" min={0} max={duration} step={0.1} value={trim.start} onChange={(e) => {
-                    const v = Math.min(Number(e.target.value), trim.end - 0.5);
-                    saveEdits(item.id, { ...item.edits, trim: { ...trim, start: v } });
-                  }} />
-                </label>
-                <label className="trim-field">Out {formatDuration(trim.end)}
-                  <input type="range" min={0} max={duration} step={0.1} value={trim.end} onChange={(e) => {
-                    const v = Math.max(Number(e.target.value), trim.start + 0.5);
-                    saveEdits(item.id, { ...item.edits, trim: { ...trim, end: v } });
-                  }} />
-                </label>
-                <button type="button" className="ghost-btn" onClick={() => { saveEdits(item.id, { ...item.edits, trim: null }); toast('Trim reset'); }}>
-                  <Icon name="restore" size={14} /> Reset
-                </button>
-              </>
-            )}
           </div>
+          {trimEdit && (
+            <div className="vc-row">
+              <label className="trim-field">In {formatDuration(trim.start)}
+                <input type="range" min={0} max={duration} step={0.1} value={trim.start} onChange={(e) => {
+                  const v = Math.min(Number(e.target.value), trim.end - 0.5);
+                  saveEdits(item.id, { ...item.edits, trim: { ...trim, start: v } });
+                }} />
+              </label>
+              <label className="trim-field">Out {formatDuration(trim.end)}
+                <input type="range" min={0} max={duration} step={0.1} value={trim.end} onChange={(e) => {
+                  const v = Math.max(Number(e.target.value), trim.start + 0.5);
+                  saveEdits(item.id, { ...item.edits, trim: { ...trim, end: v } });
+                }} />
+              </label>
+              <button type="button" className="ghost-btn" onClick={() => { saveEdits(item.id, { ...item.edits, trim: null }); toast('Trim reset'); }}>
+                <Icon name="restore" size={14} /> Reset
+              </button>
+            </div>
+          )}
         </div>
       )}
+      {speedMenu.open && <GlassPopupMenu items={speedItems} anchorRect={speedMenu.rect} onClose={speedMenu.close} title="Speed" />}
 
       <footer className={`v-bar bottom glass glass-strong${chrome ? '' : ' hide'}`}>
         <IconButton icon="share" label={t('share')} onClick={() => openShare([item.id])} />

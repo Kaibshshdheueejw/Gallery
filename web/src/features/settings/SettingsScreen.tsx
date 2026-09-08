@@ -1,12 +1,16 @@
 /**
- * Settings — flagship-style hierarchy.
- * Hub of categories → focused sub-pages (Appearance, Gallery, Playback,
- * Privacy & Security, Storage, Backup & Sync, Notifications, AI, Permissions, About).
+ * Settings — categorised hub (§6–§7). The hub lists every feature area
+ * (Appearance, Gallery, Albums, Playback, Photo Editing, Video Editing,
+ * Privacy & Security, Storage & Cleanup, Backup & Sync, Notifications,
+ * AI & Smart Features, Permissions, About Gallery); each row opens its own
+ * dedicated sub-screen. Storage & Cleanup hosts the liquid visualization and
+ * every cleanup tool moved out of For You.
  */
 import { useState } from 'react';
 import { navigate, resetAll, runBackup, setSettings, setTabOrder, toast, useApp, type SettingsPage } from '../../store';
 import { AnimatedToggle, GlassSegmented, GlassSlider, SettingsCategory, SettingsRow, SettingsSection } from '../../components/glass';
 import { Dialog, IconButton, Sheet } from '../../components/ui';
+import { StorageCleanup } from '../storage/StorageScreen';
 import { Icon } from '../../core/icons';
 import { LANGS, translate, type Lang } from '../../core/i18n';
 import { SEEDS } from '../../core/theme';
@@ -25,15 +29,35 @@ const PAGES: Record<SettingsPage, { title: string; desc: string; icon: string }>
   main: { title: 'settings', desc: '', icon: 'settings' },
   appearance: { title: 'set_appearance', desc: 'set_appearance_d', icon: 'palette' },
   gallery: { title: 'set_gallery', desc: 'set_gallery_d', icon: 'image' },
+  albums: { title: 'set_albums', desc: 'set_albums_d', icon: 'folder' },
   playback: { title: 'set_playback', desc: 'set_playback_d', icon: 'playCircle' },
+  photoEdit: { title: 'set_photoedit', desc: 'set_photoedit_d', icon: 'edit' },
+  videoEdit: { title: 'set_videoedit', desc: 'set_videoedit_d', icon: 'video' },
   privacy: { title: 'set_privacy', desc: 'set_privacy_d', icon: 'shield' },
-  storage: { title: 'set_storage', desc: 'set_storage_d', icon: 'storage' },
+  cleanup: { title: 'set_cleanup', desc: 'set_cleanup_d', icon: 'storage' },
   backup: { title: 'set_backup', desc: 'set_backup_d', icon: 'cloud' },
   notifications: { title: 'set_notifications', desc: 'set_notifications_d', icon: 'bell' },
   ai: { title: 'set_ai', desc: 'set_ai_d', icon: 'sparkle' },
   permissions: { title: 'set_permissions', desc: 'set_permissions_d', icon: 'key' },
   about: { title: 'set_about', desc: 'set_about_d', icon: 'info' },
 };
+
+/** the hub order requested in §7 */
+const HUB: Array<{ page: Exclude<SettingsPage, 'main'>; icon: string; title: string; desc: string }> = [
+  { page: 'appearance', icon: 'palette', title: 'set_appearance', desc: 'set_appearance_d' },
+  { page: 'gallery', icon: 'image', title: 'set_gallery', desc: 'set_gallery_d' },
+  { page: 'albums', icon: 'folder', title: 'set_albums', desc: 'set_albums_d' },
+  { page: 'playback', icon: 'playCircle', title: 'set_playback', desc: 'set_playback_d' },
+  { page: 'photoEdit', icon: 'edit', title: 'set_photoedit', desc: 'set_photoedit_d' },
+  { page: 'videoEdit', icon: 'video', title: 'set_videoedit', desc: 'set_videoedit_d' },
+  { page: 'privacy', icon: 'shield', title: 'set_privacy', desc: 'set_privacy_d' },
+  { page: 'cleanup', icon: 'storage', title: 'set_cleanup', desc: 'set_cleanup_d' },
+  { page: 'backup', icon: 'cloud', title: 'set_backup', desc: 'set_backup_d' },
+  { page: 'notifications', icon: 'bell', title: 'set_notifications', desc: 'set_notifications_d' },
+  { page: 'ai', icon: 'sparkle', title: 'set_ai', desc: 'set_ai_d' },
+  { page: 'permissions', icon: 'key', title: 'set_permissions', desc: 'set_permissions_d' },
+  { page: 'about', icon: 'info', title: 'set_about', desc: 'set_about_d' },
+];
 
 export function SettingsScreen({ page }: { page: SettingsPage }) {
   const app = useApp();
@@ -75,17 +99,10 @@ export function SettingsScreen({ page }: { page: SettingsPage }) {
               <h2>{t('settings')}</h2>
               <p>{t('app_name')} · {formatBytes(totalBytes)} · {items.length} items</p>
             </div>
-            <div className="set-group glass">
-              <SettingsCategory icon="palette" title={t('set_appearance')} desc={t('set_appearance_d')} onClick={() => navigate({ name: 'settings', page: 'appearance' })} />
-              <SettingsCategory icon="image" title={t('set_gallery')} desc={t('set_gallery_d')} onClick={() => navigate({ name: 'settings', page: 'gallery' })} />
-              <SettingsCategory icon="playCircle" title={t('set_playback')} desc={t('set_playback_d')} onClick={() => navigate({ name: 'settings', page: 'playback' })} />
-              <SettingsCategory icon="shield" title={t('set_privacy')} desc={t('set_privacy_d')} onClick={() => navigate({ name: 'settings', page: 'privacy' })} />
-              <SettingsCategory icon="storage" title={t('set_storage')} desc={t('set_storage_d')} onClick={() => navigate({ name: 'settings', page: 'storage' })} />
-              <SettingsCategory icon="cloud" title={t('set_backup')} desc={t('set_backup_d')} onClick={() => navigate({ name: 'settings', page: 'backup' })} />
-              <SettingsCategory icon="bell" title={t('set_notifications')} desc={t('set_notifications_d')} onClick={() => navigate({ name: 'settings', page: 'notifications' })} />
-              <SettingsCategory icon="sparkle" title={t('set_ai')} desc={t('set_ai_d')} onClick={() => navigate({ name: 'settings', page: 'ai' })} />
-              <SettingsCategory icon="key" title={t('set_permissions')} desc={t('set_permissions_d')} onClick={() => navigate({ name: 'settings', page: 'permissions' })} />
-              <SettingsCategory icon="info" title={t('set_about')} desc={t('set_about_d')} onClick={() => navigate({ name: 'settings', page: 'about' })} />
+            <div className="set-group glass hub-group">
+              {HUB.map((h) => (
+                <SettingsCategory key={h.page} icon={h.icon} title={t(h.title)} desc={t(h.desc)} onClick={() => navigate({ name: 'settings', page: h.page })} />
+              ))}
             </div>
             <div className="scroll-pad" />
           </div>
@@ -193,6 +210,14 @@ export function SettingsScreen({ page }: { page: SettingsPage }) {
                 <GlassSlider label={t('grid_density')} value={settings.gridLevel} min={0} max={5} onChange={(v) => setSettings({ gridLevel: v })} format={(v) => `${[3, 3, 4, 5, 6, 8][v]} cols`} />
               </div>
             </SettingsSection>
+            <SettingsSection title="For You sections" footnote="Control which discovery rails appear on the For You tab.">
+              <SettingsRow icon="memories" title="Memories" right={<AnimatedToggle label="Memories" checked={settings.foryou.memories} onChange={(v) => setSettings({ foryou: { ...settings.foryou, memories: v } })} />} />
+              <SettingsRow icon="story" title="Stories" right={<AnimatedToggle label="Stories" checked={settings.foryou.stories} onChange={(v) => setSettings({ foryou: { ...settings.foryou, stories: v } })} />} />
+              <SettingsRow icon="clock" title="On this day" right={<AnimatedToggle label="On this day" checked={settings.foryou.onThisDay} onChange={(v) => setSettings({ foryou: { ...settings.foryou, onThisDay: v } })} />} />
+              <SettingsRow icon="image" title="Recently added" right={<AnimatedToggle label="Recently" checked={settings.foryou.recently} onChange={(v) => setSettings({ foryou: { ...settings.foryou, recently: v } })} />} />
+              <SettingsRow icon="sparkle" title="Featured moments" right={<AnimatedToggle label="Featured" checked={settings.foryou.featured} onChange={(v) => setSettings({ foryou: { ...settings.foryou, featured: v } })} />} />
+              <SettingsRow icon="wand" title="Smart suggestions" right={<AnimatedToggle label="Suggestions" checked={settings.foryou.suggestions} onChange={(v) => setSettings({ foryou: { ...settings.foryou, suggestions: v } })} />} />
+            </SettingsSection>
             <SettingsSection title="Hidden albums">
               <SettingsRow icon="eyeOff" title="Show Hidden album" desc="Reveal the Hidden album in Albums" right={<AnimatedToggle label="Show hidden" checked={settings.showHidden} onChange={(v) => setSettings({ showHidden: v })} />} />
             </SettingsSection>
@@ -235,17 +260,116 @@ export function SettingsScreen({ page }: { page: SettingsPage }) {
           </div>
         )}
 
+        {page === 'albums' && (
+          <div className="set-list">
+            <div className="set-page-title"><h2>{t('set_albums')}</h2><p>{t('set_albums_d')}</p></div>
+            <SettingsSection title="Sections" footnote="People live in Albums — For You stays focused on discovery.">
+              <SettingsRow icon="person" title="People" desc="On-device face clusters" right={<AnimatedToggle label="People" checked={settings.albums.showPeople} onChange={(v) => setSettings({ albums: { ...settings.albums, showPeople: v } })} />} />
+              <SettingsRow icon="mapPin" title="Places" desc="Group photos by location" right={<AnimatedToggle label="Places" checked={settings.albums.showPlaces} onChange={(v) => setSettings({ albums: { ...settings.albums, showPlaces: v } })} />} />
+              <SettingsRow icon="folder" title="Folders" desc="Show device folder albums" right={<AnimatedToggle label="Folders" checked={settings.albums.showFolders} onChange={(v) => setSettings({ albums: { ...settings.albums, showFolders: v } })} />} />
+              <SettingsRow icon="history" title="Recently viewed" right={<AnimatedToggle label="Viewed" checked={settings.albums.showViewed} onChange={(v) => setSettings({ albums: { ...settings.albums, showViewed: v } })} />} />
+            </SettingsSection>
+            <SettingsSection title="Sorting">
+              <div style={{ padding: 14 }}>
+                <GlassSegmented
+                  value={settings.albums.sort}
+                  options={[{ id: 'auto', label: 'Auto' }, { id: 'name', label: 'Name' }, { id: 'count', label: 'Count' }, { id: 'recent', label: 'Recent' }]}
+                  onChange={(v) => setSettings({ albums: { ...settings.albums, sort: v } })}
+                />
+              </div>
+            </SettingsSection>
+            <div className="scroll-pad" />
+          </div>
+        )}
+
         {page === 'playback' && (
           <div className="set-list">
             <div className="set-page-title"><h2>{t('set_playback')}</h2><p>{t('set_playback_d')}</p></div>
             <SettingsSection title="Video player">
               <SettingsRow icon="playCircle" title="Autoplay videos" desc="Start playing when opened in the viewer" right={<AnimatedToggle label="Autoplay" checked={settings.autoplay} onChange={(v) => setSettings({ autoplay: v })} />} />
               <SettingsRow icon="restore" title="Loop" desc="Repeat clips from the trim start" right={<AnimatedToggle label="Loop" checked={settings.loop} onChange={(v) => setSettings({ loop: v })} />} />
-              <SettingsRow icon="pip" title="Picture-in-picture" desc={t('device_only')} disabled right={<span className="chev" style={{ fontSize: 11, fontWeight: 700 }}>SOON</span>} />
+              <SettingsRow icon="pip" title="Picture-in-picture" desc="Available from the viewer's video controls" right={<Icon name="check" size={17} className="chev" />} />
+              <SettingsRow icon="subtitle" title="Timed text overlays (CC)" desc="Toggle in the viewer — layers from the video editor" right={<Icon name="check" size={17} className="chev" />} />
             </SettingsSection>
             <SettingsSection title="Media" footnote="Thumbnails are decoded at display size; full-resolution images are only decoded in the viewer and editor.">
               <SettingsRow icon="image" title="Decode full resolution" desc="Viewer & editor only" right={<Icon name="check" size={17} className="chev" />} />
               <SettingsRow icon="grid" title="Lazy thumbnail loading" desc="Grids decode on scroll" right={<Icon name="check" size={17} className="chev" />} />
+            </SettingsSection>
+            <div className="scroll-pad" />
+          </div>
+        )}
+
+        {page === 'photoEdit' && (
+          <div className="set-list">
+            <div className="set-page-title"><h2>{t('set_photoedit')}</h2><p>{t('set_photoedit_d')}</p></div>
+            <SettingsSection title="Editing">
+              <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div className="field-label">Preview quality</div>
+                <GlassSegmented
+                  value={settings.photoEdit.previewQuality}
+                  options={[{ id: 'fast', label: 'Fast' }, { id: 'balanced', label: 'Balanced' }, { id: 'high', label: 'High' }]}
+                  onChange={(v) => setSettings({ photoEdit: { ...settings.photoEdit, previewQuality: v } })}
+                />
+              </div>
+              <SettingsRow icon="wand" title="Auto enhance on open" desc="Apply histogram-based enhance when entering the editor" right={<AnimatedToggle label="Auto enhance" checked={settings.photoEdit.autoEnhance} onChange={(v) => setSettings({ photoEdit: { ...settings.photoEdit, autoEnhance: v } })} />} />
+              <div style={{ padding: 14 }}>
+                <GlassSlider label="Undo history depth" value={settings.photoEdit.historyDepth} min={10} max={100} step={5} onChange={(v) => setSettings({ photoEdit: { ...settings.photoEdit, historyDepth: v } })} format={(v) => `${v} steps`} />
+              </div>
+            </SettingsSection>
+            <SettingsSection title="Export">
+              <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div className="field-label">Format</div>
+                <GlassSegmented
+                  value={settings.photoEdit.exportFormat}
+                  options={[{ id: 'png', label: 'PNG (lossless)' }, { id: 'jpeg', label: 'JPEG' }]}
+                  onChange={(v) => setSettings({ photoEdit: { ...settings.photoEdit, exportFormat: v } })}
+                />
+                <GlassSlider label="JPEG quality" value={settings.photoEdit.exportQuality} min={50} max={100} onChange={(v) => setSettings({ photoEdit: { ...settings.photoEdit, exportQuality: v } })} format={(v) => `${v}%`} />
+              </div>
+            </SettingsSection>
+            <div className="scroll-pad" />
+          </div>
+        )}
+
+        {page === 'videoEdit' && (
+          <div className="set-list">
+            <div className="set-page-title"><h2>{t('set_videoedit')}</h2><p>{t('set_videoedit_d')}</p></div>
+            <SettingsSection title="Player gestures" footnote="Google-Files style: swipe the left half for brightness, right half for volume, horizontally to seek.">
+              <SettingsRow icon="sun" title="Brightness swipe" desc="Left-half vertical swipe" right={<AnimatedToggle label="Brightness gesture" checked={settings.videoEdit.gestures.brightness} onChange={(v) => setSettings({ videoEdit: { ...settings.videoEdit, gestures: { ...settings.videoEdit.gestures, brightness: v } } })} />} />
+              <SettingsRow icon="volume" title="Volume swipe" desc="Right-half vertical swipe" right={<AnimatedToggle label="Volume gesture" checked={settings.videoEdit.gestures.volume} onChange={(v) => setSettings({ videoEdit: { ...settings.videoEdit, gestures: { ...settings.videoEdit.gestures, volume: v } } })} />} />
+              <SettingsRow icon="clock" title="Seek swipe" desc="Horizontal swipe along the frame" right={<AnimatedToggle label="Seek gesture" checked={settings.videoEdit.gestures.seek} onChange={(v) => setSettings({ videoEdit: { ...settings.videoEdit, gestures: { ...settings.videoEdit.gestures, seek: v } } })} />} />
+            </SettingsSection>
+            <SettingsSection title="Playback defaults">
+              <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div className="field-label">Default speed</div>
+                <GlassSegmented
+                  value={String(settings.videoEdit.defaultSpeed)}
+                  options={[{ id: '0.5', label: '0.5×' }, { id: '1', label: '1×' }, { id: '1.5', label: '1.5×' }, { id: '2', label: '2×' }]}
+                  onChange={(v) => setSettings({ videoEdit: { ...settings.videoEdit, defaultSpeed: Number(v) } })}
+                />
+                <div className="field-label">Frame-step size</div>
+                <GlassSegmented
+                  value={settings.videoEdit.frameStep === 1 / 30 ? '30' : '60'}
+                  options={[{ id: '30', label: '1/30 s' }, { id: '60', label: '1/60 s' }]}
+                  onChange={(v) => setSettings({ videoEdit: { ...settings.videoEdit, frameStep: v === '30' ? 1 / 30 : 1 / 60 } })}
+                />
+              </div>
+            </SettingsSection>
+            <SettingsSection title="Export" footnote="WebM export re-renders your exact edit recipe via MediaRecorder.">
+              <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div className="field-label">Resolution</div>
+                <GlassSegmented
+                  value={String(settings.videoEdit.exportRes)}
+                  options={[{ id: '720', label: '720p' }, { id: '1080', label: '1080p' }]}
+                  onChange={(v) => setSettings({ videoEdit: { ...settings.videoEdit, exportRes: Number(v) as 720 | 1080 } })}
+                />
+                <div className="field-label">Frame rate</div>
+                <GlassSegmented
+                  value={String(settings.videoEdit.exportFps)}
+                  options={[{ id: '30', label: '30 fps' }, { id: '60', label: '60 fps' }]}
+                  onChange={(v) => setSettings({ videoEdit: { ...settings.videoEdit, exportFps: Number(v) as 30 | 60 } })}
+                />
+              </div>
             </SettingsSection>
             <div className="scroll-pad" />
           </div>
@@ -270,21 +394,10 @@ export function SettingsScreen({ page }: { page: SettingsPage }) {
           </div>
         )}
 
-        {page === 'storage' && (
+        {page === 'cleanup' && (
           <div className="set-list">
-            <div className="set-page-title"><h2>{t('set_storage')}</h2><p>{t('set_storage_d')}</p></div>
-            <SettingsSection title="Analyse">
-              <SettingsRow icon="storage" title="Storage analyzer" desc={`${formatBytes(totalBytes)} across ${items.length} items`} onClick={() => navigate({ name: 'storage' })} />
-              <SettingsRow icon="copy" title="Duplicate detection" desc="Perceptual-hash grouping, on-device" right={<AnimatedToggle label="Duplicates" checked={settings.ai.duplicates} onChange={(v) => setSettings({ ai: { ...settings.ai, duplicates: v } })} />} />
-              <SettingsRow icon="eye" title="Blurry photo detection" desc="Laplacian-variance sharpness model" right={<AnimatedToggle label="Blurry" checked={settings.ai.blur} onChange={(v) => setSettings({ ai: { ...settings.ai, blur: v } })} />} />
-            </SettingsSection>
-            <SettingsSection title={t('trash')}>
-              <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <GlassSlider label={t('retention')} value={settings.retentionDays} min={7} max={90} onChange={(v) => setSettings({ retentionDays: v as 7 | 30 | 60 | 90 })} format={(v) => `${v} days`} />
-                <SettingsRow title="Automatic cleanup" desc="Purge expired items without asking" right={<AnimatedToggle label="Auto cleanup" checked={settings.autoCleanup} onChange={(v) => setSettings({ autoCleanup: v })} />} />
-              </div>
-              <SettingsRow icon="trash" title="Open Recycle bin" onClick={() => navigate({ name: 'trash' })} />
-            </SettingsSection>
+            <div className="set-page-title"><h2>{t('set_cleanup')}</h2><p>{t('set_cleanup_d')}</p></div>
+            <StorageCleanup embedded />
             <div className="scroll-pad" />
           </div>
         )}

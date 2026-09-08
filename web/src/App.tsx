@@ -76,6 +76,16 @@ export function App() {
     );
   }
 
+  /* page-transition key (§18): every route/tab change remounts the wrapper,
+     replaying a cheap fade+scale+slide — only one element animates, never the grid */
+  const routeKey = app.route.name === 'settings'
+    ? `settings-${app.route.page ?? 'main'}`
+    : app.route.name === 'album'
+      ? `album-${app.route.album.type}-${app.route.album.id}`
+      : app.route.name === 'tabs'
+        ? `tab-${app.activeTab}`
+        : app.route.name;
+
   let body: React.ReactNode;
   switch (app.route.name) {
     case 'album': body = <AlbumDetailScreen key={app.route.album.type + app.route.album.id} album={app.route.album} />; break;
@@ -93,7 +103,9 @@ export function App() {
   return (
     <div className="app-root">
       <div className="content">
-        {body}
+        <div className={`page-anim${settings.animations ? '' : ' no-anim'}`} key={settings.animations ? routeKey : 'static'}>
+          {body}
+        </div>
         {app.route.name === 'tabs' && <FloatingNavigation />}
       </div>
       {app.viewer && <Viewer />}
@@ -118,9 +130,11 @@ function DevHint() {
       <Icon name="info" size={16} />
       {open && (
         <span>
-          Web test build of the Gallery spec (README.md). Try: pinch / Ctrl-scroll the Timeline grid,
-          long-press to multi-select, search “sunset beach photos from July”, edit a photo, lock items (PIN 1234),
-          and tune the glass in Settings → Appearance.
+          Web test build of the Gallery spec (README.md). Try: the hamburger menu on every tab,
+          pinch / Ctrl-scroll the Timeline grid, long-press to multi-select → Collage, search
+          “sunset beach photos from July”, edit a photo (curves, HSL, stickers, text, retouch),
+          swipe a playing video — left half brightness, right half volume, across to seek —
+          lock items (PIN 1234), and explore Settings → Storage & Cleanup.
         </span>
       )}
     </button>
